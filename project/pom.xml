@@ -8,7 +8,7 @@
         <artifactId>shortlink-all</artifactId>
         <version>1.0-SNAPSHOT</version>
     </parent>
-    <artifactId>shortlink-admin</artifactId>
+    <artifactId>shortlink-project</artifactId>
 
     <dependencies>
         <dependency>
@@ -16,4 +16,5 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
     </dependencies>
+
 </project>

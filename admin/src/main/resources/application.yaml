@@ -1,0 +1,5 @@
+spring:
+  config:
+    import: optional:classpath:application.yaml  # 确保当前模块配置优先
+server:
+  port: 8002
