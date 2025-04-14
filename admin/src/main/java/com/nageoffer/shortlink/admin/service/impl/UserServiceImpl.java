@@ -3,6 +3,8 @@ package com.nageoffer.shortlink.admin.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.nageoffer.shortlink.admin.common.convention.exception.ClientException;
+import com.nageoffer.shortlink.admin.common.enums.UserErrorCodeEnum;
 import com.nageoffer.shortlink.admin.dao.entity.UserDO;
 import com.nageoffer.shortlink.admin.dao.mapper.UserMapper;
 import com.nageoffer.shortlink.admin.dto.resp.UserRespDTO;
@@ -27,7 +29,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             BeanUtils.copyProperties(userDO,result);//来自spring的BeanUtils.copyProperties()，将数据库实体的属性值赋给响应DTO
             return result;
         } else {
-            return null;
+            throw new ClientException(UserErrorCodeEnum.USER_NULL);
         }
     }
 }
