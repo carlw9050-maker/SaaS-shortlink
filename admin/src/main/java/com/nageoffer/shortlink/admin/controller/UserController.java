@@ -35,4 +35,9 @@ public class UserController {
         //将UserRespDTO类型的result对象的属性值复制给UserActualRespDTO类型的result对象的同名属性
         return Results.success(result);
     }
+
+    @GetMapping("/api/shortlink/v1/user/has-username")
+    public Result<Boolean> hasUsername(String username) {
+        return Results.success(userService.hasUsername(username));
+    }
 }
