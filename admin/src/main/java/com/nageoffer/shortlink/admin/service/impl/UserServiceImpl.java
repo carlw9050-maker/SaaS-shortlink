@@ -1,5 +1,6 @@
 package com.nageoffer.shortlink.admin.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -7,12 +8,17 @@ import com.nageoffer.shortlink.admin.common.convention.exception.ClientException
 import com.nageoffer.shortlink.admin.common.enums.UserErrorCodeEnum;
 import com.nageoffer.shortlink.admin.dao.entity.UserDO;
 import com.nageoffer.shortlink.admin.dao.mapper.UserMapper;
+import com.nageoffer.shortlink.admin.dto.req.UserRegisterReqDTO;
 import com.nageoffer.shortlink.admin.dto.resp.UserRespDTO;
 import com.nageoffer.shortlink.admin.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+
+import static com.nageoffer.shortlink.admin.common.constant.RedisCacheConstant.LOCK_USER_REGISTER_KEY;
 
 /**
  * 用户接口实现层
@@ -21,7 +27,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements UserService {
 
-     private RBloomFilter<String> userRegisterCachePenetrationBloomFilter;
+     private final RBloomFilter<String> userRegisterCachePenetrationBloomFilter;
+     private final RedissonClient redissonClient;
 
     @Override
     public UserRespDTO getUserByUsername(String username) {
@@ -39,7 +46,40 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         }
     }
     @Override
-    public Boolean hasUsername(String username) {
-        return userRegisterCachePenetrationBloomFilter.contains(username);
+    public Boolean availableUsername(String username) {
+        return !userRegisterCachePenetrationBloomFilter.contains(username);
+    }
+    @Override
+    public void register(UserRegisterReqDTO requestParam) {
+        if(!availableUsername(requestParam.getUsername())){
+            throw new ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
+        }
+        RLock lock=redissonClient.getLock(LOCK_USER_REGISTER_KEY+requestParam.getUsername());
+        //RLock 是 Redisson 提供的分布式锁接口，扩展了 Java 的 Lock 接口，支持分布式场景下的加锁、解锁、超时等操作。
+        //redissonClient 是 Redisson (一个基于 Redis 的 Java 客户端)的客户端实例，用于与 Redis 服务器交互
+        //getLock(String name) 是 Redisson 提供的方法，用于获取一个分布式锁（RLock 对象）
+        //LOCK_USER_REGISTER_KEY + requestParam.getUsername(),这是锁的名称（Key），在 Redis 中唯一标识这把锁
+        try{
+            if (lock.tryLock()){
+                //tryLock() 方法尝试获取锁，如果锁可用则立即返回true，否则返回false,该方法是非阻塞行为：当调用 tryLock() 时，
+                // 它会立即返回一个布尔值：如果锁可用（没有被其他线程/服务持有），则获取锁并返回 true；如果锁不可用，则立即返回 false，不会等待
+                //lock() 方法是阻塞行为：当调用 lock() 时：如果锁可用，则获取锁并继续执行；如果锁不可用，则当前线程会阻塞，直到锁被释放，没有返回值，
+                // 因为它会一直等待直到获取锁，对于同一个用户名的并发请求，第一个请求获取锁，其他请求会排队等待，直到锁释放，这会阻塞其他请求，直到它们能获取锁
+                int inserted=baseMapper.insert(BeanUtil.toBean(requestParam,UserDO.class));
+                //将 UserRegisterReqDTO 对象转换为 UserDO 对象
+                // 调用 baseMapper.insert 方法将用户数据插入数据库
+                if(inserted<1){
+                    throw new ClientException(UserErrorCodeEnum.USER_SAVE_ERROR);
+                    //检查插入操作的影响行数,如果影响行数小于1（表示插入失败），抛出 ClientException 异常
+                }
+                userRegisterCachePenetrationBloomFilter.add(requestParam.getUsername());//将数据库的用户名加载到布隆过滤器中
+                return;
+                //return表明成功时直接退出.运行到这一步,则提前终止register方法的执行,不再运行后面你throw代码行
+            }
+            throw new ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
+        }finally {
+            lock.unlock();
+            //在finally块中释放锁确保锁一定会被释放，避免死锁,即使业务逻辑抛出异常，锁也会被正确释放
+        }
     }
 }
