@@ -54,4 +54,11 @@ public interface UserService extends IService<UserDO> {
      * @return 用户是否登陆标识
      */
     Boolean checkLogin(String username, String token);
+
+    /**
+     * 用户退出登录
+     * @param username 用户登陆时输入的用户名
+     * @param token 用户登陆信息验证成功后生成的uuid
+     */
+    void logout(String username, String token);
 }

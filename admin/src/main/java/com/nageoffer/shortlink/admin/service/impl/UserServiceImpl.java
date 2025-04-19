@@ -140,4 +140,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         //remoteToke是UserDO 对象的 JSON 字符串
         return remoteToke != null;
     }
+
+    @Override
+    public void logout(String username, String token){
+        if(checkLogin(username,token)){
+            stringRedisTemplate.delete("login:"+username);
+            return;
+        }
+        throw new ClientException("用户token不存在或用户未登陆");
+    }
 }
