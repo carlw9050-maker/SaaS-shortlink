@@ -112,9 +112,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             throw new ClientException(UserErrorCodeEnum.USER_NULL);
         }
         String uuid= UUID.randomUUID().toString();
-        stringRedisTemplate.opsForValue().set(uuid, JSON.toJSONString(userDO),30L, TimeUnit.MINUTES);//30分钟有效期
+        stringRedisTemplate.opsForValue().set(uuid, JSON.toJSONString(userDO),30L, TimeUnit.MINUTES);
         //使用Spring的RedisTemplate操作Redis
-        //验证成功则生成UUID作为token,key为token,将用户对象(userDO)转换为JSON字符串后作为值,将用户信息存入Redis，
+        //验证成功则生成UUID作为token,key为token,将用户对象(userDO)转换为JSON字符串后作为值,将用户信息存入Redis
+        //key-30分钟有效期,到期后redis将删除该key
         return new UserLoginRespDTO(uuid);
+    }
+
+    @Override
+    public Boolean checkLogin(String token){
+        return stringRedisTemplate.hasKey(token);
     }
 }
