@@ -111,16 +111,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         if(userDO==null){
             throw new ClientException(UserErrorCodeEnum.USER_NULL);
         }
+        Boolean isLogin=stringRedisTemplate.hasKey("login:"+requestParam.getUsername());
+        if(isLogin != null && isLogin){
+            //防御性编程：避免因 Redis 异常（返回 null）导致误判。
+            throw new ClientException("用户已登录");
+        }
+        /**
+         * Hash
+         * Key:login_用户名
+         * Value:
+         *  key:token标识
+         *  Value:JSON 字符串 (用户信息)
+         */
         String uuid= UUID.randomUUID().toString();
-        stringRedisTemplate.opsForValue().set(uuid, JSON.toJSONString(userDO),30L, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForHash().put("login:"+requestParam.getUsername(),uuid, JSON.toJSONString(userDO));
+        //使用Hash结构存储用户信息到Redis(Key为"login:用户名"，field(内部key)为uuid,Hash的value为用户对象的JSON字符串)
+        stringRedisTemplate.expire("login:"+requestParam.getUsername(),30L, TimeUnit.MINUTES);
         //使用Spring的RedisTemplate操作Redis
-        //验证成功则生成UUID作为token,key为token,将用户对象(userDO)转换为JSON字符串后作为值,将用户信息存入Redis
+        //验证成功则生成UUID作为token,token为key,将用户对象(userDO)转换为JSON字符串后作为值,将用户信息存入Redis
         //key-30分钟有效期,到期后redis将删除该key
         return new UserLoginRespDTO(uuid);
     }
 
     @Override
-    public Boolean checkLogin(String token){
-        return stringRedisTemplate.hasKey(token);
+    public Boolean checkLogin(String username, String token){
+//        return stringRedisTemplate.opsForHash().get("login:"+username,"token") != null;
+        Object remoteToke=stringRedisTemplate.opsForHash().get("login:"+username,token);
+        //remoteToke是UserDO 对象的 JSON 字符串
+        return remoteToke != null;
     }
 }
