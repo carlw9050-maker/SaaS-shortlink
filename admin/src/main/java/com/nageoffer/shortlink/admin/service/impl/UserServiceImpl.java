@@ -125,8 +125,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
          */
         String uuid= UUID.randomUUID().toString();
         stringRedisTemplate.opsForHash().put("login:"+requestParam.getUsername(),uuid, JSON.toJSONString(userDO));
-        //使用Hash结构存储用户信息到Redis(Key为"login:用户名"，field(内部key)为uuid,Hash的value为用户对象的JSON字符串)
-        stringRedisTemplate.expire("login:"+requestParam.getUsername(),30L, TimeUnit.MINUTES);
+        //使用redis的Hash结构存储用户信息到Redis(Key为"login:用户名"，field(内部key)为uuid,Hash的value为用户对象的JSON字符串)
+        stringRedisTemplate.expire("login:"+requestParam.getUsername(),30L, TimeUnit.DAYS);
         //使用Spring的RedisTemplate操作Redis
         //验证成功则生成UUID作为token,token为key,将用户对象(userDO)转换为JSON字符串后作为值,将用户信息存入Redis
         //key-30分钟有效期,到期后redis将删除该key
