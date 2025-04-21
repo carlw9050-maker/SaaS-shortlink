@@ -2,10 +2,7 @@ package com.nageoffer.shortlink.admin.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.nageoffer.shortlink.admin.common.database.BaseDO;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 /**
  * 短链接分组实体
@@ -15,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor//这都是Lombok提供的注解，通常一起使用，使用后可以通过链式调用的方式创建对象
+@EqualsAndHashCode(callSuper = true)  // 确保包含父类字段
 public class GroupDO extends BaseDO {
 
     /**
