@@ -25,6 +25,7 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
         } while (!hasGid(gid));//gid的重复性检查
         GroupDO groupDO = GroupDO.builder()
                 .gid(gid)
+                .sortOrder(0)   //sortOrder的功能是实现自定义拖拽，但是这里还体现不出来
                 .name(groupName)
                 .build();//链式调用的方式创建对象
         baseMapper.insert(groupDO);
