@@ -23,7 +23,7 @@ public class UserController {
     private final UserService userService;
 
     /**
-     * 根据用户名查询用户信息
+     * 根据用户名查询用户脱敏信息
      */
     @GetMapping("/api/shortlink/v1/user/{username}")
     public Result<UserRespDTO> getUserByUsername(@PathVariable("username") String username) {
@@ -31,6 +31,9 @@ public class UserController {
         return Results.success(result);
     }
 
+    /**
+     * 根据用户名查询用户真实信息
+     */
     @GetMapping("/api/shortlink/v1/actual/user/{username}")
     public Result<UserActualRespDTO> getActualUserByUsername(@PathVariable("username") String username) {
         UserActualRespDTO result = BeanUtil.toBean(userService.getUserByUsername(username),UserActualRespDTO.class);
@@ -38,17 +41,26 @@ public class UserController {
         return Results.success(result);
     }
 
+    /**
+     * 查询用户名是否可用
+     */
     @GetMapping("/api/shortlink/v1/user/available-username")
     public Result<Boolean> availableUsername(String username) {
         return Results.success(userService.availableUsername(username));
     }
 
+    /**
+     * 用户注册
+     */
     @PostMapping("/api/shortlink/v1/user")
     public Result<Void> register(@RequestBody UserRegisterReqDTO requestParam){
         userService.register(requestParam);
         return Results.success();
     }
 
+    /**
+     * 用户更新
+     */
     @PutMapping("/api/shortlink/v1/update-user")
     public Result<Void> update(@RequestBody UserUpdateDTO requestParam){
         userService.update(requestParam);
