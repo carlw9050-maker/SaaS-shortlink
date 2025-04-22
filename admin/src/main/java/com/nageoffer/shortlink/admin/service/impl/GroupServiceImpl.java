@@ -71,4 +71,15 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
         //groupDO 包含要更新的字段值,updateWrapper 包含更新条件（WHERE 子句）
         //最终生成的SQL类似于：UPDATE group SET name = ? WHERE username = ? AND gid = ? AND del_flag = 0
     }
+
+    @Override
+    public void deleteGroup(String gid){
+        LambdaUpdateWrapper<GroupDO> updateWrapper = Wrappers.lambdaUpdate(GroupDO.class)
+                .eq(GroupDO::getUsername,UserContext.getUsername())
+                .eq(GroupDO::getGid,gid)
+                .eq(GroupDO::getDelFlag,0);
+        GroupDO groupDO = new GroupDO();
+        groupDO.setDelFlag(1);
+        baseMapper.update(groupDO,updateWrapper);
+    }
 }
