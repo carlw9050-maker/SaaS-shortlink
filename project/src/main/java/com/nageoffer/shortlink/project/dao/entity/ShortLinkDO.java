@@ -2,8 +2,11 @@ package com.nageoffer.shortlink.project.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.nageoffer.shortlink.admin.common.database.BaseDO;
+import com.nageoffer.shortlink.project.common.database.BaseDO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
@@ -12,6 +15,9 @@ import java.util.Date;
  */
 @TableName("t_link")
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor//这都是Lombok提供的注解，通常一起使用，使用后可以通过链式调用的方式创建对象
 public class ShortLinkDO extends BaseDO {
 
     /**

@@ -1,7 +1,7 @@
 package com.nageoffer.shortlink.project.controller;
 
-import com.nageoffer.shortlink.admin.common.convention.result.Result;
-import com.nageoffer.shortlink.admin.common.convention.result.Results;
+import com.nageoffer.shortlink.project.common.convention.result.Result;
+import com.nageoffer.shortlink.project.common.convention.result.Results;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkCreateReqDTO;
 import com.nageoffer.shortlink.project.dto.resp.ShortLinkCreateRespDTO;
 import com.nageoffer.shortlink.project.service.ShortLinkService;
