@@ -25,7 +25,7 @@ public class UserTransmitFilter implements Filter {
         HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
         //将ServletRequest转换为HttpServletRequest以获取更多HTTP相关信息
         String requestURI = httpServletRequest.getRequestURI();
-        if(!Objects.equals(requestURI, "/api/shortlink/v1/user-login")){    //将登陆接口放行
+        if(!Objects.equals(requestURI, "/api/shortlink/admin/v1/user-login")){    //将登陆接口放行
             //后续可能还得对验证登陆接口放行，后面再说吧，可以参考”拦截器封装用户上下文功能“视频的最后
             String username = httpServletRequest.getHeader("username");
             String token = httpServletRequest.getHeader("token");//从请求头中获取username和token字段
