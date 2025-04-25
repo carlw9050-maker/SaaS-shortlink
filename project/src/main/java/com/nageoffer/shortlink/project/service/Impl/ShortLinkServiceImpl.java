@@ -1,6 +1,8 @@
 package com.nageoffer.shortlink.project.service.Impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.nageoffer.shortlink.project.common.convention.exception.ServiceException;
 import com.nageoffer.shortlink.project.dao.entity.ShortLinkDO;
@@ -37,10 +39,13 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         try {
             baseMapper.insert(shortLinkDO);
         }catch (DuplicateKeyException ex){
-            log.warn("短链接：{} 重复入库",fullShortUrl);
-            throw new ServiceException("短链接生成重复");
-            //会中断当前方法的执行
-            //TODO 已经误判的短链接如何处理
+            LambdaQueryWrapper<ShortLinkDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
+                    .eq(ShortLinkDO::getShortUri, fullShortUrl);
+            ShortLinkDO hashShortLink = baseMapper.selectOne(queryWrapper);
+            if(hashShortLink != null){
+                log.warn("短链接：{} 重复入库",fullShortUrl);
+                throw new ServiceException("短链接生成重复");
+            }
         }
         shortUriCreateCachePenetrationBloomFilter.add(fullShortUrl);
         return ShortLinkCreateRespDTO.builder()
