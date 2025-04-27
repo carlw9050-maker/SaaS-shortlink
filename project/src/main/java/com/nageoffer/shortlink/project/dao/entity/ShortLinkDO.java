@@ -56,6 +56,11 @@ public class ShortLinkDO extends BaseDO {
     private String gid;
 
     /**
+     * 短链接网站图标
+     */
+    private String favicon;
+
+    /**
      * 启用标识：0是已启用，1是未启用
      */
     private Integer enableStatus;
