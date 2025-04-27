@@ -1,14 +1,18 @@
 package com.nageoffer.shortlink.project.service.Impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.text.StrBuilder;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.nageoffer.shortlink.project.common.convention.exception.ServiceException;
 import com.nageoffer.shortlink.project.dao.entity.ShortLinkDO;
 import com.nageoffer.shortlink.project.dao.mapper.ShortLinkMapper;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkCreateReqDTO;
+import com.nageoffer.shortlink.project.dto.req.ShortLinkPageReqDTO;
 import com.nageoffer.shortlink.project.dto.resp.ShortLinkCreateRespDTO;
+import com.nageoffer.shortlink.project.dto.resp.ShortLinkPageResDTO;
 import com.nageoffer.shortlink.project.service.ShortLinkService;
 import com.nageoffer.shortlink.project.toolkit.HashUtil;
 import lombok.RequiredArgsConstructor;
@@ -26,8 +30,8 @@ import org.springframework.stereotype.Service;
 public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLinkDO> implements ShortLinkService {
 
     private final RBloomFilter<String> shortUriCreateCachePenetrationBloomFilter;
-
     //该字段与方法名称一致，是一种约定做法，这样spring会自动将由@Bean注解的方法创建的Bean注入到该字段中
+
     @Override
     public ShortLinkCreateRespDTO creatShortLink(ShortLinkCreateReqDTO requestParam) {
         String shortLinkSuffix = generateSuffix(requestParam);
@@ -65,6 +69,22 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .build();
     }
 
+    @Override
+    public IPage<ShortLinkPageResDTO> pageShortLink(ShortLinkPageReqDTO requestParam){
+        LambdaQueryWrapper<ShortLinkDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
+                .eq(ShortLinkDO::getGid, requestParam.getGid())
+                .eq(ShortLinkDO::getEnableStatus,0)
+                .eq(ShortLinkDO::getDelFlag,0)
+                .orderByDesc(ShortLinkDO::getCreatTime);
+        IPage<ShortLinkDO> resultPage=baseMapper.selectPage(requestParam, queryWrapper);
+        //调用 baseMapper.selectPage 方法执行分页查询
+        //传入分页参数 requestParam 和查询条件 queryWrapper
+        //返回结果存储在 resultPage 中，类型是 IPage<ShortLinkDO>
+        return resultPage.convert(each-> BeanUtil.toBean(each,ShortLinkPageResDTO.class));
+        //将查询结果 resultPage 中的每个 ShortLinkDO 对象转换为 ShortLinkPageResDTO 对象
+        //使用 BeanUtil.toBean 进行对象属性拷贝,返回转换后的分页结果
+    }
+
     private String generateSuffix(ShortLinkCreateReqDTO requestParam) {
         int customGenerateCount = 0;
         String shortUri;
@@ -82,4 +102,6 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         }
         return shortUri;
     }
+
+
 }
