@@ -11,6 +11,7 @@ public class ShortLinkTableShardingTest {
             "`origin_url` varchar(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '原始链接',\n" +
             "`click_num` int DEFAULT '0' COMMENT '原始信息',\n" +
             "`gid` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'default' COMMENT '短链接分组标识',\n" +
+            "`favicon` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '网站标识',\n" +
             "`enable_status` tinyint(1) DEFAULT NULL COMMENT '启用标识：0是已启用，1是未启用',\n" +
             "`created_type` tinyint(1) DEFAULT NULL COMMENT '创建类型：0是接口创建，1是控制台创建',\n" +
             "`valid_date_type` tinyint(1) DEFAULT NULL COMMENT '有效期类型：0：永久有效；1，自定义。',\n" +
