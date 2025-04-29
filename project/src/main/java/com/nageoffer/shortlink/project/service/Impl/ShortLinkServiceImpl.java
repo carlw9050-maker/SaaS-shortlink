@@ -3,6 +3,7 @@ package com.nageoffer.shortlink.project.service.Impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.text.StrBuilder;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -11,6 +12,7 @@ import com.nageoffer.shortlink.project.dao.entity.ShortLinkDO;
 import com.nageoffer.shortlink.project.dao.mapper.ShortLinkMapper;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkCreateReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkPageReqDTO;
+import com.nageoffer.shortlink.project.dto.resp.ShortLinkCountQueryRespDTO;
 import com.nageoffer.shortlink.project.dto.resp.ShortLinkCreateRespDTO;
 import com.nageoffer.shortlink.project.dto.resp.ShortLinkPageResDTO;
 import com.nageoffer.shortlink.project.service.ShortLinkService;
@@ -20,6 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * 短链接接口实现层
@@ -32,6 +37,9 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     private final RBloomFilter<String> shortUriCreateCachePenetrationBloomFilter;
     //该字段与方法名称一致，是一种约定做法，这样spring会自动将由@Bean注解的方法创建的Bean注入到该字段中
 
+    /**
+     * 创建短链接
+     */
     @Override
     public ShortLinkCreateRespDTO creatShortLink(ShortLinkCreateReqDTO requestParam) {
         String shortLinkSuffix = generateSuffix(requestParam);
@@ -69,6 +77,9 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .build();
     }
 
+    /**
+     * 分页查询短链接
+     */
     @Override
     public IPage<ShortLinkPageResDTO> pageShortLink(ShortLinkPageReqDTO requestParam){
         LambdaQueryWrapper<ShortLinkDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
@@ -83,6 +94,20 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         return resultPage.convert(each-> BeanUtil.toBean(each,ShortLinkPageResDTO.class));
         //将查询结果 resultPage 中的每个 ShortLinkDO 对象转换为 ShortLinkPageResDTO 对象
         //使用 BeanUtil.toBean 进行对象属性拷贝,返回转换后的分页结果
+    }
+
+    /**
+     * 查询每个分组中短链接数量
+     */
+    @Override
+    public List<ShortLinkCountQueryRespDTO> listGroupShortLinkCount(List<String> requestParam){
+        QueryWrapper<ShortLinkDO> queryWrapper = Wrappers.query(new  ShortLinkDO())
+                .select("gid,count(*) as shortLinkCount")//gid：表示选择查询结果中包含 gid 这个字段（列）的记录；count(*) as shortLinkCount"：表示对每组记录进行计数（统计行数）并映射给字段
+                .in("gid",requestParam)//查询 gid 字段在 requestParam 列表中的记录。
+                .eq("enable_status",0)//查询 enable_status 字段等于 0 的记录
+                .groupBy("gid");//按 gid 字段分组，分组后，相同 gid 的记录会被合并，count(*) 会计算每组的记录数
+        List<Map<String,Object>> shortLinkDOList =  baseMapper.selectMaps(queryWrapper);
+        return BeanUtil.copyToList(shortLinkDOList,ShortLinkCountQueryRespDTO.class);
     }
 
     private String generateSuffix(ShortLinkCreateReqDTO requestParam) {
