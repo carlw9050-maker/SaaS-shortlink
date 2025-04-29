@@ -21,6 +21,7 @@ import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -75,12 +76,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
                 // 它会立即返回一个布尔值：如果锁可用（没有被其他线程/服务持有），则获取锁并返回 true；如果锁不可用，则立即返回 false，不会等待
                 //lock() 方法是阻塞行为：当调用 lock() 时：如果锁可用，则获取锁并继续执行；如果锁不可用，则当前线程会阻塞，直到锁被释放，没有返回值，
                 // 因为它会一直等待直到获取锁，对于同一个用户名的并发请求，第一个请求获取锁，其他请求会排队等待，直到锁释放，这会阻塞其他请求，直到它们能获取锁
-                int inserted=baseMapper.insert(BeanUtil.toBean(requestParam,UserDO.class));
-                //将 UserRegisterReqDTO 对象转换为 UserDO 对象
-                // 调用 baseMapper.insert 方法将用户数据插入数据库
-                if(inserted<1){
-                    throw new ClientException(UserErrorCodeEnum.USER_SAVE_ERROR);
-                    //检查插入操作的影响行数,如果影响行数小于1（表示插入失败），抛出 ClientException 异常
+                try{
+                    int inserted=baseMapper.insert(BeanUtil.toBean(requestParam,UserDO.class));
+                    //将 UserRegisterReqDTO 对象转换为 UserDO 对象
+                    // 调用 baseMapper.insert 方法将用户数据插入数据库
+                    if(inserted<1){
+                        throw new ClientException(UserErrorCodeEnum.USER_SAVE_ERROR);}
+                        //检查插入操作的影响行数,如果影响行数小于1（表示插入失败），抛出 ClientException 异常
+                }catch (DuplicateKeyException ex){
+                    throw new ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
                 }
                 userRegisterCachePenetrationBloomFilter.add(requestParam.getUsername());//将数据库的用户名加载到布隆过滤器中
                 return;
