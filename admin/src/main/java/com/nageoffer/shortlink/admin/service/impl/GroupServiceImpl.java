@@ -51,7 +51,6 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     public List<ShortLinkGroupRespDTO> listGroup(){
         LambdaQueryWrapper<GroupDO> query = Wrappers.lambdaQuery(GroupDO.class) //定义查询条件
                 .eq(GroupDO::getDelFlag,0)
-                .eq(GroupDO::getUsername,UserContext.getUsername())
                 .orderByDesc(GroupDO::getSortOrder)  //指定查询结果的降序排序规则
                 .orderByDesc(GroupDO::getUpdateTime); //指定排序规则，首先是序号，其次是更新时间
         List<GroupDO> list = baseMapper.selectList(query);  //使用MyBatis-Plus的baseMapper执行查询，将结果存储在List<GroupDO>中
