@@ -1,13 +1,14 @@
 package com.nageoffer.shortlink.admin.common.biz.user;
 
 import com.alibaba.fastjson2.JSON;
+import com.google.common.collect.Lists;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.io.IOException;
-import java.util.Objects;
+import java.util.List;
 
 /**
  * 用户信息传输过滤器,用于在Web请求中处理用户认证信息并将其存入线程上下文。
@@ -18,6 +19,11 @@ public class UserTransmitFilter implements Filter {
     //实现了Filter接口，表示这是一个Servlet过滤器
 
     private final StringRedisTemplate stringRedisTemplate;
+    private static final List<String> IGNORE_URI = Lists.newArrayList(
+            "/api/shortlink/admin/v1/user-login",
+            "/api/shortlink/admin/v1/user-register",
+            "/api/shortlink/admin/v1/user/available-username"
+    );
 
     @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
@@ -25,7 +31,7 @@ public class UserTransmitFilter implements Filter {
         HttpServletRequest httpServletRequest = (HttpServletRequest) servletRequest;
         //将ServletRequest转换为HttpServletRequest以获取更多HTTP相关信息
         String requestURI = httpServletRequest.getRequestURI();
-        if(!Objects.equals(requestURI, "/api/shortlink/admin/v1/user-login")){    //将登陆接口放行
+        if(!IGNORE_URI.contains(requestURI)){    //将登陆接口放行
             //后续可能还得对验证登陆接口放行，后面再说吧，可以参考”拦截器封装用户上下文功能“视频的最后
             String username = httpServletRequest.getHeader("username");
             String token = httpServletRequest.getHeader("token");//从请求头中获取username和token字段
