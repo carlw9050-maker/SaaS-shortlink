@@ -15,6 +15,7 @@ import com.nageoffer.shortlink.admin.dto.req.UserRegisterReqDTO;
 import com.nageoffer.shortlink.admin.dto.req.UserUpdateDTO;
 import com.nageoffer.shortlink.admin.dto.resp.UserLoginRespDTO;
 import com.nageoffer.shortlink.admin.dto.resp.UserRespDTO;
+import com.nageoffer.shortlink.admin.service.GroupService;
 import com.nageoffer.shortlink.admin.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.redisson.api.RBloomFilter;
@@ -40,6 +41,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     private final RBloomFilter<String> userRegisterCachePenetrationBloomFilter;
     private final RedissonClient redissonClient;
     private final StringRedisTemplate stringRedisTemplate;
+    private final GroupService groupService;
 
     @Override
     public UserRespDTO getUserByUsername(String username) {
@@ -87,6 +89,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
                     throw new ClientException(UserErrorCodeEnum.USER_NAME_EXIST);
                 }
                 userRegisterCachePenetrationBloomFilter.add(requestParam.getUsername());//将数据库的用户名加载到布隆过滤器中
+                groupService.saveGroup("default group");
                 return;
                 //return表明成功时直接退出.运行到这一步,则提前终止register方法的执行,不再运行后面你throw代码行
             }
@@ -133,7 +136,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         stringRedisTemplate.expire("login:"+requestParam.getUsername(),30L, TimeUnit.DAYS);
         //使用Spring的RedisTemplate操作Redis
         //验证成功则生成UUID作为token,token为key,将用户对象(userDO)转换为JSON字符串后作为值,将用户信息存入Redis
-        //key-30分钟有效期,到期后redis将删除该key
+        //key-天有效期,到期后redis将删除该key
         return new UserLoginRespDTO(uuid);
     }
 

@@ -36,11 +36,16 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     ShortLinkRemoteService shortLinkRemoteService = new ShortLinkRemoteService() {};
 
     @Override
-    public void saveGroup(String groupName) {
+    public void saveGroup(String groupName){
+        saveGroup(UserContext.getUsername(),groupName);
+    }
+
+    @Override
+    public void saveGroup(String username,String groupName) {
         String gid;
         do{
             gid = RandomGenerator.generateRandom();
-        } while (!hasGid(gid));//gid的重复性检查
+        } while (!hasGid(username,gid));//gid的重复性检查
         GroupDO groupDO = GroupDO.builder()
                 .gid(gid)
                 .sortOrder(0)   //sortOrder的功能是实现自定义拖拽，但是这里还体现不出来
@@ -49,10 +54,10 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                 .build();//链式调用的方式创建对象
         baseMapper.insert(groupDO);
     }
-    private boolean hasGid(String gid){
+    private boolean hasGid(String username,String gid){
         LambdaQueryWrapper<GroupDO> query = Wrappers.lambdaQuery(GroupDO.class) //MyBatis-Plus 的 Lambda 表达式
                 .eq(GroupDO::getGid,gid)
-                .eq(GroupDO::getUsername,UserContext.getUsername());
+                .eq(GroupDO::getUsername,Optional.ofNullable(username).orElse(UserContext.getUsername()));
         GroupDO hasGroupFlag = baseMapper.selectOne(query);
         return hasGroupFlag == null;
     }
