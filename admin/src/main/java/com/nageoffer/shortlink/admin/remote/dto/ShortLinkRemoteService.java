@@ -9,8 +9,10 @@ import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkCreateReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkPageReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkCreateRespDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkPageResDTO;
+import com.nageoffer.shortlink.project.dto.resp.ShortLinkCountQueryRespDTO;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -43,6 +45,24 @@ public interface ShortLinkRemoteService {
         map.put("size", requestParam.getSize());
 //        将请求参数中的字段放入 map 中
         String resultPageStr = HttpUtil.get("http://127.0.0.1:8001/api/shortlink/v1/get-page", map);
+//        使用 HttpUtil.get 方法发送 HTTP GET 请求：将 map 作为查询参数传递
+        return JSON.parseObject(resultPageStr, new TypeReference<>(){});
+//        反序列化操作需要知道目标对象的类型; Java 的泛型在编译后会进行类型擦除，TypeReference 通过匿名子类的方式保留了完整的泛型类型信息
+//        将 JSON 字符串 resultPageStr 反序列化为 Result<IPage<ShortLinkPageResDTO>> 类型的对象
+    }
+
+    /**
+     * 分组内的短链接数量查询
+     * @param requestParam 请求查询参数
+     * @return 返回查询信息
+     */
+    default Result<List<ShortLinkCountQueryRespDTO>> listGroupShortLinkCount(List<String> requestParam){
+
+        Map<String ,Object> map = new HashMap<>();
+//        创建一个 HashMap 用于存储请求参数，键是字符串类型，值是对象类型
+        map.put("requestParam", requestParam);
+//        将请求参数中的字段放入 map 中
+        String resultPageStr = HttpUtil.get("http://127.0.0.1:8001/api/shortlink/v1/get-count", map);
 //        使用 HttpUtil.get 方法发送 HTTP GET 请求：将 map 作为查询参数传递
         return JSON.parseObject(resultPageStr, new TypeReference<>(){});
 //        反序列化操作需要知道目标对象的类型; Java 的泛型在编译后会进行类型擦除，TypeReference 通过匿名子类的方式保留了完整的泛型类型信息
