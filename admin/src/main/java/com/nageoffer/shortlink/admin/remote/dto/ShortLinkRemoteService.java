@@ -7,9 +7,10 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.shortlink.admin.common.convention.result.Result;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkCreateReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkPageReqDTO;
+import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkUpdateReqDTO;
+import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkCountQueryRespDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkCreateRespDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkPageResDTO;
-import com.nageoffer.shortlink.project.dto.resp.ShortLinkCountQueryRespDTO;
 
 import java.util.HashMap;
 import java.util.List;
@@ -67,5 +68,10 @@ public interface ShortLinkRemoteService {
         return JSON.parseObject(resultPageStr, new TypeReference<>(){});
 //        反序列化操作需要知道目标对象的类型; Java 的泛型在编译后会进行类型擦除，TypeReference 通过匿名子类的方式保留了完整的泛型类型信息
 //        将 JSON 字符串 resultPageStr 反序列化为 Result<IPage<ShortLinkPageResDTO>> 类型的对象
+    }
+
+    default void updateShortLink(ShortLinkUpdateReqDTO requestParam) {
+
+        HttpUtil.post("http://127.0.0.1:8001/api/shortlink/v1/update-shortlink", JSON.toJSONString(requestParam));
     }
 }

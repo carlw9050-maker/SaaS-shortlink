@@ -1,9 +1,8 @@
-package com.nageoffer.shortlink.project.dao.entity;
+package com.nageoffer.shortlink.admin.dao.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.nageoffer.shortlink.project.common.database.BaseDO;
+import com.nageoffer.shortlink.admin.common.database.BaseDO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -79,14 +78,7 @@ public class ShortLinkDO extends BaseDO {
     /**
      * 有效期
      */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
     private Date validDate;
-
-    /**
-     * 创建时间
-     */
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GMT+8")
-    private Date creatTime;
 
     /**
      * 描述
