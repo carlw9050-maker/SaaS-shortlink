@@ -15,7 +15,7 @@ import com.nageoffer.shortlink.admin.dto.resp.ShortLinkGroupRespDTO;
 import com.nageoffer.shortlink.admin.remote.dto.ShortLinkRemoteService;
 import com.nageoffer.shortlink.admin.service.GroupService;
 import com.nageoffer.shortlink.admin.toolkit.RandomGenerator;
-import com.nageoffer.shortlink.project.dto.resp.ShortLinkCountQueryRespDTO;
+import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkCountQueryRespDTO;
 import groovy.util.logging.Slf4j;
 import org.springframework.stereotype.Service;
 
