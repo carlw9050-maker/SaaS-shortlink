@@ -10,6 +10,8 @@ import com.nageoffer.shortlink.project.dto.resp.ShortLinkCountQueryRespDTO;
 import com.nageoffer.shortlink.project.dto.resp.ShortLinkCreateRespDTO;
 import com.nageoffer.shortlink.project.dto.resp.ShortLinkPageResDTO;
 import com.nageoffer.shortlink.project.service.ShortLinkService;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +25,17 @@ import java.util.List;
 public class ShortLinkController {
 
     private final ShortLinkService shortLinkService;
+
+    @GetMapping("/{short-uri}")
+    public void restoreUrl(@PathVariable ("short-uri") String shortUri, ServletRequest request, ServletResponse response) {
+        //@PathVariable ("short-uri")表示从URL路径中提取名为"short-uri"的变量值并传递给方法参数，
+        //ServletRequest request: HTTP请求对象,ServletResponse response: HTTP响应对象
+        shortLinkService.restoreUrl(shortUri,request,response);
+    }
+    //"/{short-uri}"定义了一个 动态路径变量，{short-uri} 是一个占位符，可以匹配任意值；假设你的服务部署在 https://example.com，
+    // 那么访问 https://example.com/abc123 → {short-uri} 的值就是 "abc123"
+    //在 HTTP 请求到达你的代码之前，Servlet 容器（如 Tomcat、Jetty）已经初始化了 request 和 response 对象，并交给 Spring 处理。
+    //即使你什么都没做，response 仍然是一个有效的响应对象，只是它的状态是默认的（例如，状态码 200，没有内容）
 
     /**
      * 新增短链接
