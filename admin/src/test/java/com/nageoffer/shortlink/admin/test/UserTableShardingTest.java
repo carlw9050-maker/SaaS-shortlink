@@ -16,18 +16,24 @@ public class UserTableShardingTest {
 //            "  `del_flag` tinyint(1) DEFAULT NULL COMMENT '删除标识 0：未删除 1：已删除',\n" +
 //            "  PRIMARY KEY (`id`)\n" +
 //            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-            public static final String SQL="CREATE TABLE `t_group_%d` (\n" +
-                "`id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',\n" +
-                "`gid` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '分组标识',\n" +
-                "`name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '分组名称',\n" +
-                "`username` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '创建分组用户',\n" +
-                "`sort_order` int DEFAULT NULL COMMENT '分组排序',\n" +
-                "`creat_time` datetime DEFAULT NULL COMMENT '创建时间',\n" +
-                "`update_time` datetime DEFAULT NULL COMMENT '更新时间',\n" +
-                "`del_flag` tinyint(1) DEFAULT NULL COMMENT '删除标识',\n" +
-                "PRIMARY KEY (`id`) USING BTREE,\n" +
-                "UNIQUE KEY `idx_unique_gid_username` (`gid`,`username`) USING BTREE\n" +
-                ") ENGINE=InnoDB AUTO_INCREMENT=1914547892853444610 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
+//            public static final String SQL="CREATE TABLE `t_group_%d` (\n" +
+//                "`id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',\n" +
+//                "`gid` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '分组标识',\n" +
+//                "`name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '分组名称',\n" +
+//                "`username` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '创建分组用户',\n" +
+//                "`sort_order` int DEFAULT NULL COMMENT '分组排序',\n" +
+//                "`creat_time` datetime DEFAULT NULL COMMENT '创建时间',\n" +
+//                "`update_time` datetime DEFAULT NULL COMMENT '更新时间',\n" +
+//                "`del_flag` tinyint(1) DEFAULT NULL COMMENT '删除标识',\n" +
+//                "PRIMARY KEY (`id`) USING BTREE,\n" +
+//                "UNIQUE KEY `idx_unique_gid_username` (`gid`,`username`) USING BTREE\n" +
+//                ") ENGINE=InnoDB AUTO_INCREMENT=1914547892853444610 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
+            public static final String SQL="CREATE TABLE `t_link_goto_%d` (\n" +
+            "`id` bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',\n" +
+            "`gid` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT 'default' COMMENT '分组标识',\n" +
+            "`full_short_url` varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '完整链接',\n" +
+            "PRIMARY KEY (`id`)\n" +
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
     public static void main(String[] args) {
         for (int i = 0; i < 16; i++) {
             System.out.printf((SQL)+"%n",i);
