@@ -42,8 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.nageoffer.shortlink.project.common.constant.RedisKeyConstant.GOTO_SHORT_LINK_KEY;
-import static com.nageoffer.shortlink.project.common.constant.RedisKeyConstant.LOCK_GOTO_SHORT_LINK_KEY;
+import static com.nageoffer.shortlink.project.common.constant.RedisKeyConstant.*;
 
 /**
  * 短链接接口实现层
@@ -153,6 +152,26 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             return;
         }
         //先查缓存里的键是否存在，存在则直接跳转，不存在则执行后续逻辑。
+        boolean contains = shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl);
+        if(!contains){
+            return;
+        }
+        //使用布隆过滤器判断短链接是否存在，如果不存在则直接返回（防止缓存穿透）
+        String gotoIsNullShortLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_IS_NULL_SHORT_LINK_KEY,fullShortUrl));
+        if(StrUtil.isNotBlank(gotoIsNullShortLink)){
+            return;
+        }
+        //检查是否存在标记为"空"的缓存（防止反复查询不存在的短链接
+        //假设有人反复请求一个不存在的短链接 example.com/invalid123：
+            // 第一次请求：查缓存 → 无；
+            // 布隆过滤器 → 可能返回存在；布隆过滤器的局限性：虽然布隆过滤器可以快速判断"数据肯定不存在"，但它有假阳性率（可能误判存在）、不支持删除操作（一旦加入就一直存在）的缺陷
+            // 查数据库 → 确认不存在；
+            // 设置空值缓存 GOTO_IS_NULL_SHORT_LINK_KEY:example.com/invalid123 = "-"
+        //后续请求：
+            // 查缓存 → 无
+            // 布隆过滤器 → 可能返回存在；
+            //检查空值缓存 → 发现存在标记
+            // 直接返回，不再继续查询
         RLock lock = redissonClient.getLock(String.format(LOCK_GOTO_SHORT_LINK_KEY,fullShortUrl));
         lock.lock();
         //创建一个分布式锁对象lock (RLock)，String.format()构造锁的唯一标识键
@@ -168,7 +187,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                     .eq(ShortLinkGoToDO::getFullShortUrl, fullShortUrl);
             ShortLinkGoToDO shortLinkGoToDO = shortLinkGoToMapper.selectOne(linkGoToqueryWrapper);
             if (shortLinkGoToDO == null) {
-                //严谨来说，需要封控
+                stringRedisTemplate.opsForValue().set(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl), "-");
                 return;
             }
             LambdaQueryWrapper<ShortLinkDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
