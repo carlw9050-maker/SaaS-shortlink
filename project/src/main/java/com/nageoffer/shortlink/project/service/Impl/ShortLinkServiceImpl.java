@@ -2,6 +2,7 @@ package com.nageoffer.shortlink.project.service.Impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.text.StrBuilder;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -30,13 +31,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RBloomFilter;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import static com.nageoffer.shortlink.project.common.constant.RedisKeyConstant.GOTO_SHORT_LINK_KEY;
+import static com.nageoffer.shortlink.project.common.constant.RedisKeyConstant.LOCK_GOTO_SHORT_LINK_KEY;
 
 /**
  * 短链接接口实现层
@@ -49,6 +56,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     private final RBloomFilter<String> shortUriCreateCachePenetrationBloomFilter;
     //该字段与方法名称一致，是一种约定做法，这样spring会自动将由@Bean注解的方法创建的Bean注入到该字段中
     private final ShortLinkGoToMapper shortLinkGoToMapper;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final RedissonClient redissonClient;
 
     /**
      * 创建短链接
@@ -137,25 +146,50 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     public void restoreUrl(String shortUri, ServletRequest request, ServletResponse response){
         String serverName = request.getServerName();
         String fullShortUrl = serverName + "/" + shortUri;
-        LambdaQueryWrapper<ShortLinkGoToDO> linkGoToqueryWrapper = Wrappers.lambdaQuery(ShortLinkGoToDO.class)
-                .eq(ShortLinkGoToDO::getFullShortUrl,fullShortUrl);
-        ShortLinkGoToDO shortLinkGoToDO = shortLinkGoToMapper.selectOne(linkGoToqueryWrapper);
-        if(shortLinkGoToDO == null){
-            //严谨来说，需要封控
+        String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY,fullShortUrl));
+        //originalLink是字符串格式的key
+        if(StrUtil.isNotBlank(originalLink)){
+            ((HttpServletResponse) response).sendRedirect(originalLink);
             return;
         }
-        LambdaQueryWrapper<ShortLinkDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
-                .eq(ShortLinkDO::getGid,shortLinkGoToDO.getGid())
-                .eq(ShortLinkDO::getFullShortUrl,fullShortUrl)
-                .eq(ShortLinkDO::getDelFlag,0)
-                .eq(ShortLinkDO::getEnableStatus,0);
-        ShortLinkDO shortLinkDO = baseMapper.selectOne(queryWrapper);
-        if(shortLinkDO != null){
-            ((HttpServletResponse) response).sendRedirect(shortLinkDO.getOriginUrl());
-            //作用是执行http重定向，将用户的请求重定向到短链接对应的原始链接上
+        //先查缓存里的键是否存在，存在则直接跳转，不存在则执行后续逻辑。
+        RLock lock = redissonClient.getLock(String.format(LOCK_GOTO_SHORT_LINK_KEY,fullShortUrl));
+        lock.lock();
+        //创建一个分布式锁对象lock (RLock)，String.format()构造锁的唯一标识键
+        // lock.lock():获取分布式锁（阻塞式），如果锁已被其他线程/进程持有，当前线程会阻塞等待,从而避免了缓存击穿
+        try {
+            originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
+            if (StrUtil.isNotBlank(originalLink)) {
+                ((HttpServletResponse) response).sendRedirect(originalLink);
+                return;
+            }
+            //双重检查缓存：在锁内再次检查缓存，防止其他线程已经完成了缓存写入。
+            LambdaQueryWrapper<ShortLinkGoToDO> linkGoToqueryWrapper = Wrappers.lambdaQuery(ShortLinkGoToDO.class)
+                    .eq(ShortLinkGoToDO::getFullShortUrl, fullShortUrl);
+            ShortLinkGoToDO shortLinkGoToDO = shortLinkGoToMapper.selectOne(linkGoToqueryWrapper);
+            if (shortLinkGoToDO == null) {
+                //严谨来说，需要封控
+                return;
+            }
+            LambdaQueryWrapper<ShortLinkDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
+                    .eq(ShortLinkDO::getGid, shortLinkGoToDO.getGid())
+                    .eq(ShortLinkDO::getFullShortUrl, fullShortUrl)
+                    .eq(ShortLinkDO::getDelFlag, 0)
+                    .eq(ShortLinkDO::getEnableStatus, 0);
+            ShortLinkDO shortLinkDO = baseMapper.selectOne(queryWrapper);
+            if (shortLinkDO != null) {
+                stringRedisTemplate.opsForValue().set(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl), shortLinkDO.getOriginUrl());
+                //找到原始链接，则将key:原始链接 键值对存入缓存
+                ((HttpServletResponse) response).sendRedirect(shortLinkDO.getOriginUrl());
+                //作用是执行http重定向，将用户的请求重定向到短链接对应的原始链接上
+            }
+        }finally {
+            lock.unlock();
+           //确保锁一定被释放，不会死锁
         }
-
     }
+    //代码能"先取后存"：这是典型的 缓存穿透防护设计，先尝试从 Redis 读取，如果缓存命中（短链接已存在），直接返回；如果未命中（返回 null），继续后续逻辑；
+    //从数据库读取并回填缓存：查询数据库获取原始链接，将结果存入 Redis（供后续请求快速访问），这种设计避免了缓存穿透（大量请求直接打到数据库）
 
     private String generateSuffix(ShortLinkCreateReqDTO requestParam) {
         int customGenerateCount = 0;
