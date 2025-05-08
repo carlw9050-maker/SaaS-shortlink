@@ -11,6 +11,7 @@ import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkUpdateReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkCountQueryRespDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkCreateRespDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkPageResDTO;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.HashMap;
 import java.util.List;
@@ -73,5 +74,16 @@ public interface ShortLinkRemoteService {
     default void updateShortLink(ShortLinkUpdateReqDTO requestParam) {
 
         HttpUtil.post("http://127.0.0.1:8001/api/shortlink/v1/update-shortlink", JSON.toJSONString(requestParam));
+    }
+
+    /**
+     * 根据 URL 获取标题
+     * @param url 目标网址
+     * @return 网站标题
+     */
+    default Result<String> getTitleByUrl(@RequestParam("url") String url){
+        String resultStr = HttpUtil.get("http://127.0.0.1:8001/api/shortlink/v1/get-title?url=" + url);
+        return JSON.parseObject(resultStr, new TypeReference<>() {
+        });
     }
 }
