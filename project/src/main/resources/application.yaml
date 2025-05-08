@@ -10,6 +10,11 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
+  mvc:
+  #短链接跳转失败时的前端页面响应
+    view:
+      prefix: /templates/
+      suffix: .html
 
 
 server:
