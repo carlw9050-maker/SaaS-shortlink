@@ -41,7 +41,7 @@ public interface ShortLinkRemoteService {
      */
     default Result<IPage<ShortLinkPageResDTO>> pageShortLink(ShortLinkPageReqDTO requestParam){
 
-        Map<String ,Object> map = new HashMap<String ,Object>();
+        Map<String ,Object> map = new HashMap<>();
 //        创建一个 HashMap 用于存储请求参数，键是字符串类型，值是对象类型
         map.put("gid", requestParam.getGid());
         map.put("current", requestParam.getCurrent());
@@ -96,4 +96,25 @@ public interface ShortLinkRemoteService {
         HttpUtil.post("http://127.0.0.1:8001/api/shortlink/v1/recycle-bin/add", JSON.toJSONString(requestParam));
 
     }
+
+    /**
+     * 回收站里的短链接分页查询
+     * @param requestParam 请求查询参数
+     * @return 返回查询信息
+     */
+    default Result<IPage<ShortLinkPageResDTO>> pageRecycleBinShortLink(ShortLinkPageReqDTO requestParam){
+
+        Map<String ,Object> map = new HashMap<>();
+//        创建一个 HashMap 用于存储请求参数，键是字符串类型，值是对象类型
+        map.put("gid", requestParam.getGid());
+        map.put("current", requestParam.getCurrent());
+        map.put("size", requestParam.getSize());
+//        将请求参数中的字段放入 map 中
+        String resultPageStr = HttpUtil.get("http://127.0.0.1:8001/api/shortlink/v1/recycle-bin/get-page", map);
+//        使用 HttpUtil.get 方法发送 HTTP GET 请求：将 map 作为查询参数传递
+        return JSON.parseObject(resultPageStr, new TypeReference<>(){});
+//        反序列化操作需要知道目标对象的类型; Java 的泛型在编译后会进行类型擦除，TypeReference 通过匿名子类的方式保留了完整的泛型类型信息
+//        将 JSON 字符串 resultPageStr 反序列化为 Result<IPage<ShortLinkPageResDTO>> 类型的对象
+    }
+
 }
