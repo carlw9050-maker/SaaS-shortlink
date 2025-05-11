@@ -5,6 +5,7 @@ import com.nageoffer.shortlink.admin.common.convention.result.Result;
 import com.nageoffer.shortlink.admin.common.convention.result.Results;
 import com.nageoffer.shortlink.admin.remote.dto.ShortLinkRemoteService;
 import com.nageoffer.shortlink.admin.remote.dto.req.RecycleBinAddReqDTO;
+import com.nageoffer.shortlink.admin.remote.dto.req.RecycleBinDeleteReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.RecycleBinRemoveReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkPageReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkPageResDTO;
@@ -48,6 +49,15 @@ public class RecycleBinController {
     @PostMapping("/api/shortlink/admin/v1/recycle-bin/remove")
     public Result<Void> addRecycleBin(@RequestBody RecycleBinRemoveReqDTO requestParam){
         shortLinkRemoteService.removeRecycleBin(requestParam);
+        return Results.success();
+    }
+
+    /**
+     *将回收站的短链接彻底删除
+     */
+    @PostMapping("/api/shortlink/admin/v1/recycle-bin/delete")
+    public Result<Void> deleteRecycleBin(@RequestBody RecycleBinDeleteReqDTO requestParam){
+        shortLinkRemoteService.deleteRecycleBin(requestParam);
         return Results.success();
     }
 }

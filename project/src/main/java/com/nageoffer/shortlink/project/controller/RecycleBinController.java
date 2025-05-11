@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.shortlink.project.common.convention.result.Result;
 import com.nageoffer.shortlink.project.common.convention.result.Results;
 import com.nageoffer.shortlink.project.dto.req.RecycleBinAddReqDTO;
+import com.nageoffer.shortlink.project.dto.req.RecycleBinDeleteReqDTO;
 import com.nageoffer.shortlink.project.dto.req.RecycleBinRemoveReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkPageReqDTO;
 import com.nageoffer.shortlink.project.dto.resp.ShortLinkPageResDTO;
@@ -47,6 +48,15 @@ public class RecycleBinController {
     @PostMapping("/api/shortlink/v1/recycle-bin/remove")
     public Result<Void> removeRecycleBin(@RequestBody RecycleBinRemoveReqDTO requestParam){
         recycleBinService.removeRecycleBin(requestParam);
+        return Results.success();
+    }
+
+    /**
+     * 将回收站里的短链接彻底删除
+     */
+    @PostMapping("/api/shortlink/v1/recycle-bin/delete")
+    public Result<Void> deleteRecycleBin(@RequestBody RecycleBinDeleteReqDTO requestParam){
+        recycleBinService.deleteRecycleBin(requestParam);
         return Results.success();
     }
 }
