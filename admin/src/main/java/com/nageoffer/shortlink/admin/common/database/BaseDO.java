@@ -4,7 +4,8 @@ import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import lombok.Data;
 
-import java.util.Date;
+import java.sql.Date;
+
 
 /**
  * 数据库持久层对象基础属性

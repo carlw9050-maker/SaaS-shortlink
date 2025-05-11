@@ -1,6 +1,8 @@
 package com.nageoffer.shortlink.project.service.Impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.date.Week;
 import cn.hutool.core.text.StrBuilder;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -12,8 +14,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.nageoffer.shortlink.project.common.convention.exception.ClientException;
 import com.nageoffer.shortlink.project.common.convention.exception.ServiceException;
 import com.nageoffer.shortlink.project.common.enums.ValidDateTypeEnum;
+import com.nageoffer.shortlink.project.dao.entity.LinkAccessStatisticDO;
 import com.nageoffer.shortlink.project.dao.entity.ShortLinkDO;
 import com.nageoffer.shortlink.project.dao.entity.ShortLinkGoToDO;
+import com.nageoffer.shortlink.project.dao.mapper.LinkAccessStatisticMapper;
 import com.nageoffer.shortlink.project.dao.mapper.ShortLinkGoToMapper;
 import com.nageoffer.shortlink.project.dao.mapper.ShortLinkMapper;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkCreateReqDTO;
@@ -65,6 +69,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     private final ShortLinkGoToMapper shortLinkGoToMapper;
     private final StringRedisTemplate stringRedisTemplate;
     private final RedissonClient redissonClient;
+    private final LinkAccessStatisticMapper linkAccessStatisticMapper;
 
     /**
      * 创建短链接
@@ -163,6 +168,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY,fullShortUrl));
         //originalLink是字符串格式的key；get() 方法用于根据键从 Redis 中获取值。
         if(StrUtil.isNotBlank(originalLink)){
+            shortLinkStatistic(fullShortUrl,null,request,response);
             ((HttpServletResponse) response).sendRedirect(originalLink);
             return;
         }
@@ -196,6 +202,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         try {
             originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
             if (StrUtil.isNotBlank(originalLink)) {
+                shortLinkStatistic(fullShortUrl,null,request,response);
                 ((HttpServletResponse) response).sendRedirect(originalLink);
                 return;
             }
@@ -226,6 +233,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                         shortLinkDO.getOriginUrl(),
                         LinkUtil.getLinkCacheValidDate(shortLinkDO.getValidDate()),TimeUnit.MILLISECONDS
                 );
+                shortLinkStatistic(fullShortUrl,shortLinkDO.getGid(),request,response);
                 //找到原始链接，则将key:原始链接 键值对存入缓存
                 ((HttpServletResponse) response).sendRedirect(shortLinkDO.getOriginUrl());
                 //作用是执行http重定向，将用户的请求重定向到短链接对应的原始链接上
@@ -237,6 +245,36 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     }
     //代码能"先取后存"：这是典型的 缓存穿透防护设计，先尝试从 Redis 读取，如果缓存命中（短链接已存在），直接返回；如果未命中（返回 null），继续后续逻辑；
     //从数据库读取并回填缓存：查询数据库获取原始链接，将结果存入 Redis（供后续请求快速访问），这种设计避免了缓存穿透（大量请求直接打到数据库）
+
+    private void shortLinkStatistic(String fullShortUrl, String gid, ServletRequest request, ServletResponse response){
+
+        try{
+            if(StrUtil.isBlank(gid)){
+                LambdaQueryWrapper<ShortLinkGoToDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkGoToDO.class)
+                        .eq(ShortLinkGoToDO::getFullShortUrl, fullShortUrl);
+                ShortLinkGoToDO shortLinkGoToDO = shortLinkGoToMapper.selectOne(queryWrapper);
+                gid = shortLinkGoToDO.getGid();
+            }
+            int hour = DateUtil.hour(new Date(),true);
+            Week week = DateUtil.dayOfWeekEnum(new Date());
+            //在 Hutool 的 DateUtil.dayOfWeekEnum() 方法中，返回的 Week 枚举代表的是星期几（Monday-Sunday）
+            int weekValue = week.getIso8601Value();
+            //而 getIso8601Value() 方法返回的是 ISO 8601 标准的星期序号，其中：星期一（Monday）= 1、星期二（Tuesday）= 2...
+            LinkAccessStatisticDO linkAccessStatisticDO = LinkAccessStatisticDO.builder()
+                    .pv(1)
+                    .uv(2)
+                    .uip(3)
+                    .hour(hour)
+                    .weekday(weekValue)
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .build();
+            linkAccessStatisticMapper.shortLinkStatistic(linkAccessStatisticDO);
+        } catch (Throwable ex) {
+            log.error("短链接访问异常",ex);
+        }
+    }
 
     private String generateSuffix(ShortLinkCreateReqDTO requestParam) {
         int customGenerateCount = 0;
