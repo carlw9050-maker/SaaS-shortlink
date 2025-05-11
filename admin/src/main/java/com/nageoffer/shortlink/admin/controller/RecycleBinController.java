@@ -5,6 +5,7 @@ import com.nageoffer.shortlink.admin.common.convention.result.Result;
 import com.nageoffer.shortlink.admin.common.convention.result.Results;
 import com.nageoffer.shortlink.admin.remote.dto.ShortLinkRemoteService;
 import com.nageoffer.shortlink.admin.remote.dto.req.RecycleBinAddReqDTO;
+import com.nageoffer.shortlink.admin.remote.dto.req.RecycleBinRemoveReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkPageReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkPageResDTO;
 import lombok.RequiredArgsConstructor;
@@ -39,5 +40,14 @@ public class RecycleBinController {
     public Result<IPage<ShortLinkPageResDTO>> pageShortLink(ShortLinkPageReqDTO requestParam){
         //IPage<> 是 MyBatis-Plus 框架中定义的一个分页结果接口，用于封装分页查询的结果数据
         return shortLinkRemoteService.pageRecycleBinShortLink(requestParam);
+    }
+
+    /**
+     *将短链接从回收站移出
+     */
+    @PostMapping("/api/shortlink/admin/v1/recycle-bin/remove")
+    public Result<Void> addRecycleBin(@RequestBody RecycleBinRemoveReqDTO requestParam){
+        shortLinkRemoteService.removeRecycleBin(requestParam);
+        return Results.success();
     }
 }
