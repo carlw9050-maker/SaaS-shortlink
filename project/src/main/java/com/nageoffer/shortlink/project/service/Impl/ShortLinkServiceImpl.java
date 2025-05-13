@@ -3,7 +3,9 @@ package com.nageoffer.shortlink.project.service.Impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.date.Week;
+import cn.hutool.core.lang.UUID;
 import cn.hutool.core.text.StrBuilder;
+import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -31,6 +33,8 @@ import com.nageoffer.shortlink.project.toolkit.HashUtil;
 import com.nageoffer.shortlink.project.toolkit.LinkUtil;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -48,11 +52,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.nageoffer.shortlink.project.common.constant.RedisKeyConstant.*;
 
@@ -233,8 +235,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                         shortLinkDO.getOriginUrl(),
                         LinkUtil.getLinkCacheValidDate(shortLinkDO.getValidDate()),TimeUnit.MILLISECONDS
                 );
-                shortLinkStatistic(fullShortUrl,shortLinkDO.getGid(),request,response);
                 //找到原始链接，则将key:原始链接 键值对存入缓存
+                shortLinkStatistic(fullShortUrl,shortLinkDO.getGid(),request,response);
                 ((HttpServletResponse) response).sendRedirect(shortLinkDO.getOriginUrl());
                 //作用是执行http重定向，将用户的请求重定向到短链接对应的原始链接上
             }
@@ -248,7 +250,48 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     private void shortLinkStatistic(String fullShortUrl, String gid, ServletRequest request, ServletResponse response){
 
+        AtomicBoolean uvFirstFlag = new AtomicBoolean();    //默认初始值是false
+        Cookie[] cookies = ((HttpServletRequest) request).getCookies();
+        //((HttpServletRequest) request)是执行强制类型转换，request是HttpServletRequest 接口的一个实例。
+        // HttpServletRequest 对象代表了客户端（例如，网页浏览器）发送过来的 HTTP 请求。
+        //cookie是包含在客户端发送过来的http请求里的；如果客户端没有发送任何 Cookie，这个方法会返回 null
         try{
+            Runnable addResponseCookieTask = () -> {
+                String uv = UUID.fastUUID().toString();
+                //uv是一个不可用的通用唯一标识
+                Cookie uvCookie = new Cookie("uv", uv);
+                //创建一个Cookie实例，名称是uv，值是上面的字符串
+                uvCookie.setMaxAge(60 * 60 * 24 * 30);
+                //设置uvCookie的最大生存时间，到期后浏览器不再存储这个Cookie
+                uvCookie.setPath(StrUtil.sub(fullShortUrl,fullShortUrl.indexOf("/"),fullShortUrl.length()));
+                //uvCookie.setPath()，浏览器只有在请求这个路径或其子路径下的资源，http请求才会携带这个Cookie，发送给服务器
+                //StrUtil.sub()截取fullShortUrl中从第一个/到末尾的子字符串
+                ((HttpServletResponse) response).addCookie(uvCookie);
+                //将指定的Cookie加入到http响应的头部中，浏览器会存储这个Cookie，并且后续向相同服务器相同路径下的请求中会包含这个Cookie（未过期）
+                uvFirstFlag.set(Boolean.TRUE);
+                stringRedisTemplate.opsForSet().add("short-link:statistic:uv:" + fullShortUrl, uv);
+            };
+            if(ArrayUtil.isNotEmpty(cookies)){
+                //如果 cookies 数组不为空，这行代码会创建一个基于该数组的 Stream，可以进行链式操作
+                Arrays.stream(cookies)
+                        .filter(each -> Objects.equals(each.getName(), "uv"))
+                        //过滤操作，检查数组中每一个元素的名称是否与uv相同，只有相同的Cookie会被保留在Stream中
+                        .findFirst()//查找Stream的第一个元素
+                        .map(Cookie::getValue)
+                        //将Optional<Cookie>中的Cookie对象转为其值
+                        .ifPresentOrElse(each -> {
+                            Long added = stringRedisTemplate.opsForSet().add("short-link:statistic:uv:" + fullShortUrl,each);
+                            //对redis的set集合执行add操作，"short-link:statistic:uv:" + fullShortUrl是set集合的key，each是从名为uv的Cookie中获取的值
+                            //added是成功添加到set集合里的元素个数；如果set集合里已有相同元素，opsForSet().add()不会重复添加
+                            uvFirstFlag.set(added != null && added > 0L);
+                        },addResponseCookieTask);//如果没有找到名为uv的Cookie，则执行该任务
+                //.ifPresentOrElse(each -> { ... }, addResponseCookieTask)，接受两个参数
+            }else{
+                addResponseCookieTask.run();
+            }
+            //上述代码的逻辑是：检查http请求里有无任何Cookie，
+            // 若有，则尝试找到指定Cookie，加入到redis的set里，若成功添加，则uvFirstFlag设置为True；若没有找到指定Cookie，则创建一个，并加入到http响应中
+            // 若没有，则创建一个Cookie，并加入到http响应中，后续http请求都会带上该Cookie
             if(StrUtil.isBlank(gid)){
                 LambdaQueryWrapper<ShortLinkGoToDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkGoToDO.class)
                         .eq(ShortLinkGoToDO::getFullShortUrl, fullShortUrl);
@@ -262,8 +305,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             //而 getIso8601Value() 方法返回的是 ISO 8601 标准的星期序号，其中：星期一（Monday）= 1、星期二（Tuesday）= 2...
             LinkAccessStatisticDO linkAccessStatisticDO = LinkAccessStatisticDO.builder()
                     .pv(1)
-                    .uv(2)
-                    .uip(3)
+                    .uv(uvFirstFlag.get() ? 1 : 0)
+                    .uip(1)
                     .hour(hour)
                     .weekday(weekValue)
                     .fullShortUrl(fullShortUrl)
