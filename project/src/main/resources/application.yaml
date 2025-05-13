@@ -16,10 +16,10 @@ spring:
       prefix: /templates/
       suffix: .html
 
-short-link:
-  statistic:
-    locale:
-      amap-key:824c511f0997586ea016f979fdb23087
+#short-link:
+#  statistic:
+#    locale:
+#      amap-key:824c511f0997586ea016f979fdb23087
 
 server:
   port: 8001
