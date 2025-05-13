@@ -292,6 +292,9 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             //上述代码的逻辑是：检查http请求里有无任何Cookie，
             // 若有，则尝试找到指定Cookie，加入到redis的set里，若成功添加，则uvFirstFlag设置为True；若没有找到指定Cookie，则创建一个，并加入到http响应中
             // 若没有，则创建一个Cookie，并加入到http响应中，后续http请求都会带上该Cookie
+            String remoteAddr = LinkUtil.getActualIp(((HttpServletRequest) request));
+            Long uipAdded = stringRedisTemplate.opsForSet().add("short-link:statistic:uip:" + fullShortUrl,remoteAddr);
+            boolean uipAddedFlag = uipAdded != null && uipAdded > 0L;
             if(StrUtil.isBlank(gid)){
                 LambdaQueryWrapper<ShortLinkGoToDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkGoToDO.class)
                         .eq(ShortLinkGoToDO::getFullShortUrl, fullShortUrl);
@@ -306,7 +309,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             LinkAccessStatisticDO linkAccessStatisticDO = LinkAccessStatisticDO.builder()
                     .pv(1)
                     .uv(uvFirstFlag.get() ? 1 : 0)
-                    .uip(1)
+                    .uip(uipAddedFlag ? 1 : 0)
                     .hour(hour)
                     .weekday(weekValue)
                     .fullShortUrl(fullShortUrl)

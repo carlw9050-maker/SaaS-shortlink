@@ -2,6 +2,7 @@ package com.nageoffer.shortlink.project.toolkit;
 
 import cn.hutool.core.date.DateUnit;
 import cn.hutool.core.date.DateUtil;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Date;
 import java.util.Optional;
@@ -16,7 +17,7 @@ public class LinkUtil {
     /**
      * 获取短链接在缓存里的有效时间
      * @param validDate 如果传入参数validDate有值，则为短期；若无值，则为永久短链接
-     * @return
+     * @return 有效期
      */
     public static long getLinkCacheValidDate(Date validDate){
         return Optional.ofNullable(validDate)
@@ -29,4 +30,29 @@ public class LinkUtil {
         // 使用 DateUtil.between 方法计算当前时间(new Date())到 validDate 之间的毫秒数，这意味着返回的是短期链接的剩余有效时间
     // 如果 validDate 为 null：
         // 返回 DEFAULT_CACHE_VALID_TIME 常量值，这表示永久短链接的默认缓存有效期
+
+    /**
+     * 获取用户真实IP
+     * @param request 请求
+     * @return 用户真实IP
+     */
+    public static String getActualIp(HttpServletRequest request) {
+        String ipAddress = request.getHeader("X-Forwarded-For");
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getHeader("Proxy-Client-IP");
+        }
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getHeader("WL-Proxy-Client-IP");
+        }
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getHeader("HTTP_CLIENT_IP");
+        }
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getHeader("HTTP_X_FORWARDED_FOR");
+        }
+        if (ipAddress == null || ipAddress.isEmpty() || "unknown".equalsIgnoreCase(ipAddress)) {
+            ipAddress = request.getRemoteAddr();
+        }
+        return ipAddress;
+    }
 }
