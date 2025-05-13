@@ -6,11 +6,11 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 
 /**
- * 短链接访问之浏览器监控的持久层
+ * 短链接访问之操作系统监控的持久层
  */
 public interface LinkOsStatisticMapper extends BaseMapper<LinkOsStatisticDO> {
     /**
-     * 记录浏览器访问数据
+     * 记录操作系统访问数据
      */
     @Insert("INSERT INTO t_link_os_statistic (full_short_url,gid,date,cnt,os,create_time,update_time,del_flag)"+
             "VALUES(#{linkOsStatistic.fullShortUrl}, #{linkOsStatistic.gid}, #{linkOsStatistic.date}, #{linkOsStatistic.cnt}, #{linkOsStatistic.os}, NOW(), NOW(), 0) " +

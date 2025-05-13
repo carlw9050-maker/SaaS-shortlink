@@ -10,14 +10,14 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 
 /**
- * 短链接访问之操作系统监控的实体
+ * 短链接访问之浏览器监控的实体
  */
 @Data
-@TableName("t_link_os_statistic")
+@TableName("t_link_browser_statistic")
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class LinkOsStatisticDO extends BaseDO {
+public class LinkBrowserStatisticDO extends BaseDO {
 
     /**
      * ID
@@ -45,7 +45,7 @@ public class LinkOsStatisticDO extends BaseDO {
     private Integer cnt;
 
     /**
-     * 操作系统
+     * 浏览器
      */
-    private String os;
+    private String browser;
 }

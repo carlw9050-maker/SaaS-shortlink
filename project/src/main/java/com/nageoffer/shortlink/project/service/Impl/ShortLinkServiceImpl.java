@@ -16,10 +16,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.nageoffer.shortlink.project.common.convention.exception.ClientException;
 import com.nageoffer.shortlink.project.common.convention.exception.ServiceException;
 import com.nageoffer.shortlink.project.common.enums.ValidDateTypeEnum;
-import com.nageoffer.shortlink.project.dao.entity.LinkAccessStatisticDO;
-import com.nageoffer.shortlink.project.dao.entity.LinkOsStatisticDO;
-import com.nageoffer.shortlink.project.dao.entity.ShortLinkDO;
-import com.nageoffer.shortlink.project.dao.entity.ShortLinkGoToDO;
+import com.nageoffer.shortlink.project.dao.entity.*;
 import com.nageoffer.shortlink.project.dao.mapper.*;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkCreateReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkPageReqDTO;
@@ -73,6 +70,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     private final LinkAccessStatisticMapper linkAccessStatisticMapper;
     private final LinkLocaleStatisticMapper linkLocaleStatisticMapper;
     private final LinkOsStatisticMapper linkOsStatisticMapper;
+    private final LinkBrowserStatisticMapper linkBrowserStatisticMapper;
 
 //    @Value("${short-link.statistic.locale.amap-key}")
 //    private String statisticLocaleAmapKey;
@@ -343,14 +341,22 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 //                        .date(new Date())
 //                        .build();
 //                linkLocaleStatisticMapper.shortLinkLocaleStatistic(linkLocaleStatisticDO);
-                LinkOsStatisticDO linkOsStatisticDO = LinkOsStatisticDO.builder()
-                        .os(LinkUtil.getOs(((HttpServletRequest) request)))
-                        .cnt(1)
-                        .fullShortUrl(fullShortUrl)
-                        .gid(gid)
-                        .date(new Date())
-                        .build();
-                linkOsStatisticMapper.shortLinkOsStatistic(linkOsStatisticDO);
+            LinkOsStatisticDO linkOsStatisticDO = LinkOsStatisticDO.builder()
+                    .os(LinkUtil.getOs(((HttpServletRequest) request)))
+                    .cnt(1)
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .build();
+            linkOsStatisticMapper.shortLinkOsStatistic(linkOsStatisticDO);
+            LinkBrowserStatisticDO linkBrowserStatisticDO = LinkBrowserStatisticDO.builder()
+                    .browser(LinkUtil.getBrowser(((HttpServletRequest) request)))
+                    .cnt(1)
+                    .fullShortUrl(fullShortUrl)
+                    .gid(gid)
+                    .date(new Date())
+                    .build();
+            linkBrowserStatisticMapper.shortLinkBrowserStatistic(linkBrowserStatisticDO);
         } catch (Throwable ex) {
             log.error("短链接访问异常",ex);
         }
