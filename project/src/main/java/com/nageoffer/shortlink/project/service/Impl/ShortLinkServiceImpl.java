@@ -51,6 +51,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.nageoffer.shortlink.project.common.constant.RedisKeyConstant.*;
 
@@ -71,6 +72,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     private final LinkLocaleStatisticMapper linkLocaleStatisticMapper;
     private final LinkOsStatisticMapper linkOsStatisticMapper;
     private final LinkBrowserStatisticMapper linkBrowserStatisticMapper;
+    private final LinkAccessLogsMapper linkAccessLogsMapper;
 
 //    @Value("${short-link.statistic.locale.amap-key}")
 //    private String statisticLocaleAmapKey;
@@ -259,10 +261,11 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         // HttpServletRequest 对象代表了客户端（例如，网页浏览器）发送过来的 HTTP 请求。
         //cookie是包含在客户端发送过来的http请求里的；如果客户端没有发送任何 Cookie，这个方法会返回 null
         try{
+            AtomicReference<String> uv = new AtomicReference<>();
             Runnable addResponseCookieTask = () -> {
-                String uv = UUID.fastUUID().toString();
-                //uv是一个不可用的通用唯一标识
-                Cookie uvCookie = new Cookie("uv", uv);
+                uv.set(UUID.fastUUID().toString());
+                //uv是一个不可改变的通用唯一标识
+                Cookie uvCookie = new Cookie("uv", uv.get());
                 //创建一个Cookie实例，名称是uv，值是上面的字符串
                 uvCookie.setMaxAge(60 * 60 * 24 * 30);
                 //设置uvCookie的最大生存时间，到期后浏览器不再存储这个Cookie
@@ -272,7 +275,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 ((HttpServletResponse) response).addCookie(uvCookie);
                 //将指定的Cookie加入到http响应的头部中，浏览器会存储这个Cookie，并且后续向相同服务器相同路径下的请求中会包含这个Cookie（未过期）
                 uvFirstFlag.set(Boolean.TRUE);
-                stringRedisTemplate.opsForSet().add("short-link:statistic:uv:" + fullShortUrl, uv);
+                stringRedisTemplate.opsForSet().add("short-link:statistic:uv:" + fullShortUrl, uv.get());
             };
             if(ArrayUtil.isNotEmpty(cookies)){
                 //如果 cookies 数组不为空，这行代码会创建一个基于该数组的 Stream，可以进行链式操作
@@ -283,6 +286,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                         .map(Cookie::getValue)
                         //将Optional<Cookie>中的Cookie对象转为其值
                         .ifPresentOrElse(each -> {
+                            uv.set(each);
+                            //初始化uv字段
                             Long added = stringRedisTemplate.opsForSet().add("short-link:statistic:uv:" + fullShortUrl,each);
                             //对redis的set集合执行add操作，"short-link:statistic:uv:" + fullShortUrl是set集合的key，each是从名为uv的Cookie中获取的值
                             //added是成功添加到set集合里的元素个数；如果set集合里已有相同元素，opsForSet().add()不会重复添加
@@ -293,8 +298,10 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 addResponseCookieTask.run();
             }
             //上述代码的逻辑是：检查http请求里有无任何Cookie，
-            // 若有，则尝试找到指定Cookie，加入到redis的set里，若成功添加，则uvFirstFlag设置为True；若没有找到指定Cookie，则创建一个，并加入到http响应中
-            // 若没有，则创建一个Cookie，并加入到http响应中，后续http请求都会带上该Cookie
+                // 若有
+                    // 则尝试找到指定Cookie，加入到redis的set里，若成功添加，则uvFirstFlag设置为True；
+                    // 若没有找到指定Cookie，则创建一个，并加入到http响应中
+                // 若没有，则创建一个Cookie，并加入到http响应中，后续http请求都会带上该Cookie
             String remoteAddr = LinkUtil.getActualIp(((HttpServletRequest) request));
             Long uipAdded = stringRedisTemplate.opsForSet().add("short-link:statistic:uip:" + fullShortUrl,remoteAddr);
             boolean uipAddedFlag = uipAdded != null && uipAdded > 0L;
@@ -341,22 +348,33 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 //                        .date(new Date())
 //                        .build();
 //                linkLocaleStatisticMapper.shortLinkLocaleStatistic(linkLocaleStatisticDO);
+            String os = LinkUtil.getOs(((HttpServletRequest) request));
             LinkOsStatisticDO linkOsStatisticDO = LinkOsStatisticDO.builder()
-                    .os(LinkUtil.getOs(((HttpServletRequest) request)))
+                    .os(os)
                     .cnt(1)
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
                     .date(new Date())
                     .build();
             linkOsStatisticMapper.shortLinkOsStatistic(linkOsStatisticDO);
+            String browser = LinkUtil.getBrowser(((HttpServletRequest) request));
             LinkBrowserStatisticDO linkBrowserStatisticDO = LinkBrowserStatisticDO.builder()
-                    .browser(LinkUtil.getBrowser(((HttpServletRequest) request)))
+                    .browser(browser)
                     .cnt(1)
                     .fullShortUrl(fullShortUrl)
                     .gid(gid)
                     .date(new Date())
                     .build();
             linkBrowserStatisticMapper.shortLinkBrowserStatistic(linkBrowserStatisticDO);
+            LinkAccessLogsDO linkAccessLogsDO = LinkAccessLogsDO.builder()
+                    .user(uv.get())
+                    .ip(remoteAddr)
+                    .browser(browser)
+                    .fullShortUrl(fullShortUrl)
+                    .os(os)
+                    .gid(gid)
+                    .build();
+            linkAccessLogsMapper.insert(linkAccessLogsDO);
         } catch (Throwable ex) {
             log.error("短链接访问异常",ex);
         }
