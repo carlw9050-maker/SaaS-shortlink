@@ -2,8 +2,13 @@ package com.nageoffer.shortlink.project.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.nageoffer.shortlink.project.dao.entity.LinkBrowserStatisticDO;
+import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticReqDTO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.HashMap;
+import java.util.List;
 
 /**
  * 短链接访问之浏览器监控的持久层
@@ -16,4 +21,20 @@ public interface LinkBrowserStatisticMapper extends BaseMapper<LinkBrowserStatis
             "VALUES(#{linkBrowserStatistic.fullShortUrl}, #{linkBrowserStatistic.gid}, #{linkBrowserStatistic.date}, #{linkBrowserStatistic.cnt}, #{linkBrowserStatistic.browser}, NOW(), NOW(), 0) " +
             "ON DUPLICATE KEY UPDATE cnt = cnt + #{linkBrowserStatistic.cnt};")
     void shortLinkBrowserStatistic(@Param("linkBrowserStatistic") LinkBrowserStatisticDO linkBrowserStatisticDO);
+
+    /**
+     * 根据短链接获取指定日期内浏览器监控数据
+     */
+    @Select("SELECT " +
+            "    browser, " +
+            "    SUM(cnt) AS count " +
+            "FROM " +
+            "    t_link_browser_statistic " +
+            "WHERE " +
+            "    full_short_url = #{param.fullShortUrl} " +
+            "    AND gid = #{param.gid} " +
+            "    AND date BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "    full_short_url, gid, date, browser;")
+    List<HashMap<String, Object>> listBrowserStatisticByShortLink(@Param("param") ShortLinkStatisticReqDTO requestParam);
 }

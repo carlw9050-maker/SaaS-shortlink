@@ -288,14 +288,14 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                         .map(Cookie::getValue)
                         //将Optional<Cookie>中的Cookie对象转为其值
                         .ifPresentOrElse(each -> {
-                            uv.set(each);
+                            //uv.set(each);此代码是多余的
                             //初始化uv字段
                             Long added = stringRedisTemplate.opsForSet().add("short-link:statistic:uv:" + fullShortUrl,each);
                             //对redis的set集合执行add操作，"short-link:statistic:uv:" + fullShortUrl是set集合的key，each是从名为uv的Cookie中获取的值
                             //added是成功添加到set集合里的元素个数；如果set集合里已有相同元素，opsForSet().add()不会重复添加
                             uvFirstFlag.set(added != null && added > 0L);
-                        },addResponseCookieTask);//如果没有找到名为uv的Cookie，则执行该任务
-                //.ifPresentOrElse(each -> { ... }, addResponseCookieTask)，接受两个参数
+                        },addResponseCookieTask);//如果each有值(即名为uv对应的值），则 执行前一个，若each无值，则执行该任务
+                //.ifPresentOrElse(each -> { ... }, addResponseCookieTask)，接受两个参数;.ifPresentOrElse()是Optional类提供的方法
             }else{
                 addResponseCookieTask.run();
             }

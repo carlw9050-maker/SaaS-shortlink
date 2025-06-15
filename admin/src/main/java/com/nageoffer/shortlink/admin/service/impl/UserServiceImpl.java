@@ -119,10 +119,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             throw new ClientException(UserErrorCodeEnum.USER_NULL);
         }
         Boolean isLogin=stringRedisTemplate.hasKey("login:"+requestParam.getUsername());
+        //构建一个Redis键,比如键就是 "login:zhangsan"
         if(isLogin != null && isLogin){
             //防御性编程：避免因 Redis 异常（返回 null）导致误判。
             throw new ClientException("用户已登录");
         }
+
         /**
          * Hash
          * Key:login_用户名
@@ -138,6 +140,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         //验证成功则生成UUID作为token,token为key,将用户对象(userDO)转换为JSON字符串后作为值,将用户信息存入Redis
         //key-天有效期,到期后redis将删除该key
         return new UserLoginRespDTO(uuid);
+
     }
 
     @Override
@@ -146,6 +149,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         Object remoteToke=stringRedisTemplate.opsForHash().get("login:"+username,token);
         //remoteToke是UserDO 对象的 JSON 字符串
         return remoteToke != null;
+        //true为登陆，false为不登陆
     }
 
     @Override
