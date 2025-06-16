@@ -1,20 +1,22 @@
 package com.nageoffer.shortlink.project.service.Impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.nageoffer.shortlink.project.dao.entity.LinkAccessLogsDO;
 import com.nageoffer.shortlink.project.dao.entity.LinkAccessStatisticDO;
 import com.nageoffer.shortlink.project.dao.entity.LinkDeviceStatisticDO;
 import com.nageoffer.shortlink.project.dao.entity.LinkNetworkStatisticDO;
 import com.nageoffer.shortlink.project.dao.mapper.*;
+import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticAccessRecordReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticReqDTO;
 import com.nageoffer.shortlink.project.dto.resp.*;
 import com.nageoffer.shortlink.project.service.ShortLinkStatisticService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -200,5 +202,41 @@ public class ShortLinkStatisticServiceImpl implements ShortLinkStatisticService 
                 .deviceStatistic(deviceStatistic)
                 .networkStatistic(networkStatistic)
                 .build();
+    }
+
+    @Override
+    public IPage<ShortLinkStatisticAccessRecordRespDTO> shortLinkStatisticAccessRecord(ShortLinkStatisticAccessRecordReqDTO requestParam) {
+        LambdaQueryWrapper<LinkAccessLogsDO> queryWrapper = Wrappers.lambdaQuery(LinkAccessLogsDO.class)
+                .eq(LinkAccessLogsDO::getGid, requestParam.getGid())
+                .eq(LinkAccessLogsDO::getFullShortUrl, requestParam.getFullShortUrl())
+                .between(LinkAccessLogsDO::getCreateTime, requestParam.getStartDate(), requestParam.getEndDate())
+                .eq(LinkAccessLogsDO::getDelFlag, 0)
+                .orderByDesc(LinkAccessLogsDO::getCreateTime);
+        IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectPage(requestParam, queryWrapper);
+        // this requestParam object is used by selectPage to get the pagination parameters like-
+        // the desired current page number and size (records per page).
+        //.selectPage(requestParam, queryWrapper)的两个参数，前者定义分页查询逻辑，后者定义数据库过滤条件等
+        IPage<ShortLinkStatisticAccessRecordRespDTO> actualResult = linkAccessLogsDOIPage.convert(each -> BeanUtil.toBean(each, ShortLinkStatisticAccessRecordRespDTO.class));
+        List<String> userAccessLogsList = actualResult.getRecords().stream()
+                .map(ShortLinkStatisticAccessRecordRespDTO::getUser)
+                .toList();
+        //.getRecords()是指The Data for the Current Page:即返回当前页的查询数据
+        List<Map<String, Object>> uvTypeList = linkAccessLogsMapper.selectUvTypeByUsers(
+                requestParam.getGid(),
+                requestParam.getFullShortUrl(),
+                requestParam.getStartDate(),
+                requestParam.getEndDate(),
+                userAccessLogsList
+        );
+        actualResult.getRecords().forEach(each -> {
+            String uvType = uvTypeList.stream()
+                    .filter(item -> Objects.equals(each.getUser(), item.get("user")))
+                    .findFirst()
+                    .map(item -> item.get("UvType"))
+                    .map(Object::toString)
+                    .orElse("旧访客");
+            each.setUvType(uvType);
+        });
+        return actualResult;
     }
 }
