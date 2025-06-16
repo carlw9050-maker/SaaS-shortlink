@@ -4,10 +4,7 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.nageoffer.shortlink.project.dao.entity.LinkAccessLogsDO;
-import com.nageoffer.shortlink.project.dao.entity.LinkAccessStatisticDO;
-import com.nageoffer.shortlink.project.dao.entity.LinkDeviceStatisticDO;
-import com.nageoffer.shortlink.project.dao.entity.LinkNetworkStatisticDO;
+import com.nageoffer.shortlink.project.dao.entity.*;
 import com.nageoffer.shortlink.project.dao.mapper.*;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticAccessRecordReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticReqDTO;
@@ -33,6 +30,7 @@ public class ShortLinkStatisticServiceImpl implements ShortLinkStatisticService 
     private final LinkOsStatisticMapper linkOsStatisticMapper;
     private final LinkDeviceStatisticMapper linkDeviceStatisticMapper;
     private final LinkNetworkStatisticMapper linkNetworkStatisticMapper;
+    private final ShortLinkMapper shortLinkMapper;
 
     @Override
     public ShortLinkStatisticRespDTO oneShortLinkStatistic(ShortLinkStatisticReqDTO requestParam) {
@@ -189,7 +187,22 @@ public class ShortLinkStatisticServiceImpl implements ShortLinkStatisticService 
             networkStatistic.add(networkRespDTO);
         });
 
+        //因为ShortLinkStatisticRespDTO里有pv、uv、uip字段并且之前的代码里没有对其赋值，于是我按照自己的想法，将短链接的汇总访问值赋给它们
+        //我没有创建DTO对象，这肯定是不严谨的，后面再改进吧
+        // ToDo
+        ShortLinkDO sumAccess = shortLinkMapper.getSumAccess(requestParam);
+
+        Integer pv = sumAccess.getTotalPv();
+        Integer uv = sumAccess.getTotalUv();
+        Integer uip = sumAccess.getTotalUip();
+
+
         return ShortLinkStatisticRespDTO.builder()
+                .pv(pv)
+                .uv(uv)
+                .uip(uip)
+                // .pv(sumAccess.getTotalPv())这样的格式不行，DTO的对应字段值仍为null，GPT说是类型不匹配的问题，
+                // 虽然ShortLinkDO的字段值确实也是integer类型的，和ShortLinkStatisticRespDTO对应的字段值一致，搞不懂
                 .daily(BeanUtil.copyToList(listStatisticByShortLink, ShortLinkStatisticAccessDailyRespDTO.class))
                 //将DO对象转为DTO对象
                 //.localeCnStatistic(localeCnStatistic)

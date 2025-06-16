@@ -67,6 +67,21 @@ public class ShortLinkDO extends BaseDO {
     private Integer enableStatus;
 
     /**
+     * 历史访问pv
+     */
+    private Integer totalPv;
+
+    /**
+     * 历史访问uv
+     */
+    private Integer totalUv;
+
+    /**
+     * 历史访问uip
+     */
+    private Integer totalUip;
+
+    /**
      * 创建类型：0是接口创建，1是控制台创建
      */
     private Integer createdType;

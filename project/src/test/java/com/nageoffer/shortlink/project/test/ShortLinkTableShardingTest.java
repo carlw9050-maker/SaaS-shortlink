@@ -17,6 +17,9 @@ public class ShortLinkTableShardingTest {
             "`valid_date_type` tinyint(1) DEFAULT NULL COMMENT '有效期类型：0：永久有效；1，自定义。',\n" +
             "`valid_date` datetime DEFAULT NULL COMMENT '有效期',\n" +
             "`describe` varchar(1024) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT '描述',\n" +
+            "`total_pv` int(11) DEFAULT NULL COMMENT '历史pv访问',\n" +
+            "`total_uv` int(11) DEFAULT NULL COMMENT '历史uv访问',\n" +
+            "`total_uip` int(11) DEFAULT NULL COMMENT '历史uip访问',\n" +
             "`creat_time` datetime DEFAULT NULL COMMENT '短链接创建时间',\n" +
             "`update_time` datetime DEFAULT NULL COMMENT '修改时间',\n" +
             "`del_flag` tinyint(1) DEFAULT NULL COMMENT '删除标识：0表示未删除，1表示已删除',\n" +

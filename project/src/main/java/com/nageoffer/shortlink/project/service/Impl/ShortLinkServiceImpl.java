@@ -99,6 +99,9 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .describe(requestParam.getDescribe())
                 .shortUri(shortLinkSuffix)
                 .enableStatus(0)
+                .totalPv(0)
+                .totalUv(0)
+                .totalUip(0)
                 .fullShortUrl(fullShortUrl)
                 .favicon(getFavicon(requestParam.getOriginUrl()))
                 .build();
@@ -329,6 +332,10 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                     .date(new Date())
                     .build();
             linkAccessStatisticMapper.shortLinkStatistic(linkAccessStatisticDO);
+
+            //更新段短链接的总访问量
+            baseMapper.incrementStats(gid, fullShortUrl, 1, uvFirstFlag.get() ? 1 : 0, uipAddedFlag ? 1 : 0);
+
 //            Map<String,Object> localeParamMap = new HashMap();
 //            localeParamMap.put("key", statisticLocaleAmapKey);
 //            localeParamMap.put("ip", remoteAddr);
