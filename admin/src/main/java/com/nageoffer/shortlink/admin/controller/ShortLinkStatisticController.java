@@ -3,6 +3,7 @@ package com.nageoffer.shortlink.admin.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.shortlink.admin.common.convention.result.Result;
 import com.nageoffer.shortlink.admin.remote.dto.ShortLinkRemoteService;
+import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkGroupStatisticAccessRecordReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkGroupStatisticReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkStatisticAccessRecordReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkStatisticReqDTO;
@@ -43,5 +44,13 @@ public class ShortLinkStatisticController {
     @GetMapping("/api/shortlink/admin/v1/statistic/get-page")
     public Result<IPage<ShortLinkStatisticAccessRecordRespDTO>> shortLinkStatsAccessRecord(ShortLinkStatisticAccessRecordReqDTO requestParam) {
         return shortLinkRemoteService.shortLinkStatisticAccessRecord(requestParam);
+    }
+
+    /**
+     * 访问分组短链接指定时间内访问记录的分页查询
+     */
+    @GetMapping("/api/shortlink/admin/v1/statistic/group/get-page")
+    public Result<IPage<ShortLinkStatisticAccessRecordRespDTO>> groupShortLinkStatsAccessRecord(ShortLinkGroupStatisticAccessRecordReqDTO requestParam) {
+        return shortLinkRemoteService.groupShortLinkStatisticAccessRecord(requestParam);
     }
 }

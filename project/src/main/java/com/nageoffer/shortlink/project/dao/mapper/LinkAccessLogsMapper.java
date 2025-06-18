@@ -75,6 +75,7 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
     HashMap<String, Object> findUvTypeCntByShortLink(@Param("param") ShortLinkStatisticReqDTO requestParam);
 
     /**
+     * 单个短链接访问记录的分页查询
      * 获取用户是否新老访客的信息
      */
     @Select("<script> " +
@@ -82,6 +83,7 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
             "    user, " +
             "    CASE " +
             "        WHEN MIN(create_time) BETWEEN #{startDate} AND #{endDate} THEN '新访客' " +
+            //MIN(create_time): 这是一个聚合函数，用于获取每个 user 第一次访问该链接的时间,或者理解为第一条记录对应的时间
             "        ELSE '老访客' " +
             "    END AS uvType " +
             "FROM " +
@@ -100,6 +102,37 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
     List<Map<String, Object>> selectUvTypeByUsers(
             @Param("gid") String gid,
             @Param("fullShortUrl") String fullShortUrl,
+            @Param("startDate") String startDate,
+            @Param("endDate") String endDate,
+            @Param("userAccessLogsList") List<String> userAccessLogsList
+    );
+
+    /**
+     * 分组短链接访问记录的分页查询
+     * 获取用户是否新老访客的信息
+     */
+    @Select("<script> " +
+            "SELECT " +
+            "    user, " +
+            "    CASE " +
+            "        WHEN MIN(create_time) BETWEEN #{startDate} AND #{endDate} THEN '新访客' " +
+            //MIN(create_time): 这是一个聚合函数，用于获取每个 user 第一次访问该链接的时间,或者理解为第一条记录对应的时间
+            "        ELSE '老访客' " +
+            "    END AS uvType " +
+            "FROM " +
+            "    t_link_access_logs " +
+            "WHERE " +
+            "    gid = #{gid} " +
+            "    AND user IN " +
+            "    <foreach item='item' index='index' collection='userAccessLogsList' open='(' separator=',' close=')'> " +
+            "        #{item} " +
+            "    </foreach> " +
+            "GROUP BY " +
+            "    user;" +
+            "    </script>"
+    )
+    List<Map<String, Object>> selectGroupUvTypeByUsers(
+            @Param("gid") String gid,
             @Param("startDate") String startDate,
             @Param("endDate") String endDate,
             @Param("userAccessLogsList") List<String> userAccessLogsList
