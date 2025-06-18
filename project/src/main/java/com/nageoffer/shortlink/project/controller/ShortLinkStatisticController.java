@@ -3,6 +3,7 @@ package com.nageoffer.shortlink.project.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.nageoffer.shortlink.project.common.convention.result.Result;
 import com.nageoffer.shortlink.project.common.convention.result.Results;
+import com.nageoffer.shortlink.project.dto.req.ShortLinkGroupStatisticReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticAccessRecordReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticReqDTO;
 import com.nageoffer.shortlink.project.dto.resp.ShortLinkStatisticAccessRecordRespDTO;
@@ -27,6 +28,14 @@ public class ShortLinkStatisticController {
     @GetMapping("/api/shortlink/v1/statistic")
     public Result<ShortLinkStatisticRespDTO> shortLinkStatistic(ShortLinkStatisticReqDTO requestParam) {
         return Results.success(shortLinkStatisticService.oneShortLinkStatistic(requestParam));
+    }
+
+    /**
+     * 访问分组短链接指定时间内监控数据
+     */
+    @GetMapping("/api/shortlink/v1/statistic/group")
+    public Result<ShortLinkStatisticRespDTO> groupShortLinkStatistic(ShortLinkGroupStatisticReqDTO requestParam) {
+        return Results.success(shortLinkStatisticService.groupShortLinkStatistic(requestParam));
     }
 
     /**

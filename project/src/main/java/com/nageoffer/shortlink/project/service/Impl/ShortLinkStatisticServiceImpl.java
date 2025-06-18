@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.nageoffer.shortlink.project.dao.entity.*;
 import com.nageoffer.shortlink.project.dao.mapper.*;
+import com.nageoffer.shortlink.project.dto.req.ShortLinkGroupStatisticReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticAccessRecordReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticReqDTO;
 import com.nageoffer.shortlink.project.dto.resp.*;
@@ -187,14 +188,14 @@ public class ShortLinkStatisticServiceImpl implements ShortLinkStatisticService 
             networkStatistic.add(networkRespDTO);
         });
 
-        //因为ShortLinkStatisticRespDTO里有pv、uv、uip字段并且之前的代码里没有对其赋值，于是我按照自己的想法，将短链接的汇总访问值赋给它们
-        //我没有创建DTO对象，这肯定是不严谨的，后面再改进吧
+        //因为ShortLinkStatisticRespDTO里有pv、uv、uip字段并且之前的代码里没有对其赋值，于是我按照自己的想法，
+        //将指定时间段内短链接的访问值汇总后赋给它们，我没有创建DTO对象，这肯定是不严谨的，后面再改进吧
         // ToDo
-        ShortLinkDO sumAccess = shortLinkMapper.getSumAccess(requestParam);
+        LinkAccessStatisticDO sumAccess = linkAccessStatisticMapper.getSumAccess(requestParam);
 
-        Integer pv = sumAccess.getTotalPv();
-        Integer uv = sumAccess.getTotalUv();
-        Integer uip = sumAccess.getTotalUip();
+        Integer pv = sumAccess.getPv();
+        Integer uv = sumAccess.getUv();
+        Integer uip = sumAccess.getUip();
 
 
         return ShortLinkStatisticRespDTO.builder()
@@ -212,6 +213,166 @@ public class ShortLinkStatisticServiceImpl implements ShortLinkStatisticService 
                 .browserStatistic(browserStatistic)
                 .osStatistic(osStatistic)
                 .uvTypeStatistic(uvTypeStatistic)
+                .deviceStatistic(deviceStatistic)
+                .networkStatistic(networkStatistic)
+                .build();
+    }
+
+    @Override
+    public ShortLinkStatisticRespDTO groupShortLinkStatistic(ShortLinkGroupStatisticReqDTO requestParam) {
+        // 基础访问详情
+        List<LinkAccessStatisticDO> listStatisticByShortLink = linkAccessStatisticMapper.listStatisticByGroup(requestParam);
+        // 地区访问详情（仅国内）
+        //不能获取高德地图API，故注释掉
+//        List<ShortLinkStatisticLocaleCNRespDTO> localeCnStatistic = new ArrayList<>();
+//        List<LinkLocaleStatisticDO> listedLocaleByShortLink = linkLocaleStatisticMapper.listLocaleByShortLink(requestParam);
+//        int localeCnSum = listedLocaleByShortLink.stream()
+//                .mapToInt(LinkLocaleStatisticDO::getCnt)
+//                .sum();
+//        listedLocaleByShortLink.forEach(each -> {
+//            double ratio = (double) each.getCnt() / localeCnSum;
+//            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+//            ShortLinkStatisticLocaleCNRespDTO localeCNRespDTO = ShortLinkStatisticLocaleCNRespDTO.builder()
+//                    .cnt(each.getCnt())
+//                    .locale(each.getProvince())
+//                    .ratio(actualRatio)
+//                    .build();
+//            localeCnStatistic.add(localeCNRespDTO);
+//        });
+        // 小时访问详情
+        List<Integer> hourStatistic = new ArrayList<>();
+        List<LinkAccessStatisticDO> listHourStatisticByGroup = linkAccessStatisticMapper.listHourStatisticByGroup(requestParam);
+        for (int i = 0; i < 24; i++) {
+            AtomicInteger hour = new AtomicInteger(i);
+            int hourCnt = listHourStatisticByGroup.stream()
+                    .filter(each -> Objects.equals(each.getHour(), hour.get()))
+                    .findFirst()
+                    .map(LinkAccessStatisticDO::getPv)
+                    .orElse(0);
+            hourStatistic.add(hourCnt);
+        }
+        //前端给出查询时间段；按小时汇总pv、uv等；然后返回一个integer列表，每个元素代表访问量，每个元素的索引对应小时。
+
+        // 高频访问IP详情
+        List<ShortLinkStatisticTopIpRespDTO> topIpStatistic = new ArrayList<>();
+        List<HashMap<String, Object>> listTopIpByGroup = linkAccessLogsMapper.listTopIpByGroup(requestParam);
+        listTopIpByGroup.forEach(each -> {
+            ShortLinkStatisticTopIpRespDTO statisticTopIpRespDTO = ShortLinkStatisticTopIpRespDTO.builder()
+                    .ip(each.get("ip").toString())
+                    .cnt(Integer.parseInt(each.get("count").toString()))
+                    .build();
+            topIpStatistic.add(statisticTopIpRespDTO);
+        });
+        //返回一个对象列表，每个对象包含两个属性，ip和对应的访问量
+
+        // 一周访问详情
+        List<Integer> weekdayStatistic = new ArrayList<>();
+        List<LinkAccessStatisticDO> listWeekdayStatisticByGroup = linkAccessStatisticMapper.listWeekdayStatisticByGroup(requestParam);
+        for (int i = 0; i < 7; i++) {
+            AtomicInteger weekday = new AtomicInteger(i);
+            int weekdayCnt = listWeekdayStatisticByGroup.stream()
+                    .filter(each -> Objects.equals(each.getWeekday(), weekday.get()))
+                    .findFirst()
+                    .map(LinkAccessStatisticDO::getPv)
+                    .orElse(0);
+            weekdayStatistic.add(weekdayCnt);
+        }
+        //返回一个integer列表，每个元素代表访问量，每个元素的索引对应星期几。
+
+        // 浏览器访问详情
+        List<ShortLinkStatisticBrowserRespDTO> browserStatistic = new ArrayList<>();
+        List<HashMap<String, Object>> listBrowserStatisticByGroup = linkBrowserStatisticMapper.listBrowserStatisticByGroup(requestParam);
+        int browserSum = listBrowserStatisticByGroup.stream()
+                .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
+                .sum();
+        listBrowserStatisticByGroup.forEach(each -> {
+            double ratio = (double) Integer.parseInt(each.get("count").toString()) / browserSum;
+            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            ShortLinkStatisticBrowserRespDTO browserRespDTO = ShortLinkStatisticBrowserRespDTO.builder()
+                    .cnt(Integer.parseInt(each.get("count").toString()))
+                    .browser(each.get("browser").toString())
+                    .ratio(actualRatio)
+                    .build();
+            browserStatistic.add(browserRespDTO);
+        });
+        //返回一个浏览器对象列表，每个对象包含三个属性。
+
+        // 操作系统访问详情
+        List<ShortLinkStatisticOsRespDTO> osStatistic = new ArrayList<>();
+        List<HashMap<String, Object>> listOsStatisticByGroup = linkOsStatisticMapper.listOsStatisticByGroup(requestParam);
+        int osSum = listOsStatisticByGroup.stream()
+                .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
+                .sum();
+        listOsStatisticByGroup.forEach(each -> {
+            double ratio = (double) Integer.parseInt(each.get("count").toString()) / osSum;
+            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            ShortLinkStatisticOsRespDTO osRespDTO = ShortLinkStatisticOsRespDTO.builder()
+                    .cnt(Integer.parseInt(each.get("count").toString()))
+                    .os(each.get("os").toString())
+                    .ratio(actualRatio)
+                    .build();
+            osStatistic.add(osRespDTO);
+        });
+        //返回一个操作系统对象列表，每个对象包含三个属性。
+
+        // 访问设备类型详情
+        List<ShortLinkStatisticDeviceRespDTO> deviceStatistic = new ArrayList<>();
+        List<LinkDeviceStatisticDO> listDeviceStatisticByGroup = linkDeviceStatisticMapper.listDeviceStatisticByGroup(requestParam);
+        int deviceSum = listDeviceStatisticByGroup.stream()
+                .mapToInt(LinkDeviceStatisticDO::getCnt)
+                .sum();
+        listDeviceStatisticByGroup.forEach(each -> {
+            double ratio = (double) each.getCnt() / deviceSum;
+            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            ShortLinkStatisticDeviceRespDTO deviceRespDTO = ShortLinkStatisticDeviceRespDTO.builder()
+                    .cnt(each.getCnt())
+                    .device(each.getDevice())
+                    .ratio(actualRatio)
+                    .build();
+            deviceStatistic.add(deviceRespDTO);
+        });
+
+        // 访问网络类型详情
+        List<ShortLinkStatisticNetworkRespDTO> networkStatistic = new ArrayList<>();
+        List<LinkNetworkStatisticDO> listNetworkStatisticByGroup = linkNetworkStatisticMapper.listNetworkStatisticByGroup(requestParam);
+        int networkSum = listNetworkStatisticByGroup.stream()
+                .mapToInt(LinkNetworkStatisticDO::getCnt)
+                .sum();
+        listNetworkStatisticByGroup.forEach(each -> {
+            double ratio = (double) each.getCnt() / networkSum;
+            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            ShortLinkStatisticNetworkRespDTO networkRespDTO = ShortLinkStatisticNetworkRespDTO.builder()
+                    .cnt(each.getCnt())
+                    .network(each.getNetwork())
+                    .ratio(actualRatio)
+                    .build();
+            networkStatistic.add(networkRespDTO);
+        });
+
+        //因为ShortLinkStatisticRespDTO里有pv、uv、uip字段并且之前的代码里没有对其赋值，于是我按照自己的想法，将短链接的汇总访问值赋给它们
+        //我没有创建DTO对象，这肯定是不严谨的，后面再改进吧
+        // ToDo
+        LinkAccessStatisticDO sumAccessByGroup = linkAccessStatisticMapper.getSumAccessByGroup(requestParam);
+
+        Integer pv = sumAccessByGroup.getPv();
+        Integer uv = sumAccessByGroup.getUv();
+        Integer uip = sumAccessByGroup.getUip();
+
+
+        return ShortLinkStatisticRespDTO.builder()
+                .pv(pv)
+                .uv(uv)
+                .uip(uip)
+                // .pv(sumAccess.getTotalPv())这样的格式不行，DTO的对应字段值仍为null，GPT说是类型不匹配的问题，
+                // 虽然ShortLinkDO的字段值确实也是integer类型的，和ShortLinkStatisticRespDTO对应的字段值一致，搞不懂
+                .daily(BeanUtil.copyToList(listStatisticByShortLink, ShortLinkStatisticAccessDailyRespDTO.class))
+                //将DO对象转为DTO对象
+                //.localeCnStatistic(localeCnStatistic)
+                .hourStatistic(hourStatistic)
+                .topIpStatistic(topIpStatistic)
+                .weekdayStatistic(weekdayStatistic)
+                .browserStatistic(browserStatistic)
+                .osStatistic(osStatistic)
                 .deviceStatistic(deviceStatistic)
                 .networkStatistic(networkStatistic)
                 .build();
@@ -252,4 +413,6 @@ public class ShortLinkStatisticServiceImpl implements ShortLinkStatisticService 
         });
         return actualResult;
     }
+
+
 }

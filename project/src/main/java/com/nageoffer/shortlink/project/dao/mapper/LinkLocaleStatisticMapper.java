@@ -2,6 +2,7 @@ package com.nageoffer.shortlink.project.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.nageoffer.shortlink.project.dao.entity.LinkLocaleStatisticDO;
+import com.nageoffer.shortlink.project.dto.req.ShortLinkGroupStatisticReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticReqDTO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
@@ -22,7 +23,7 @@ public interface LinkLocaleStatisticMapper extends BaseMapper<LinkLocaleStatisti
     void shortLinkLocaleStatistic(@Param("linkLocaleStatistic") LinkLocaleStatisticDO linkLocaleStatisticDO);
 
     /**
-     * 根据短链接获取指定日期内基础监控数据
+     * 根据单个短链接获取指定日期内基础监控数据
      */
     @Select("SELECT " +
             "    province, " +
@@ -36,4 +37,19 @@ public interface LinkLocaleStatisticMapper extends BaseMapper<LinkLocaleStatisti
             "GROUP BY " +
             "    full_short_url, gid, province;")
     List<LinkLocaleStatisticDO> listLocaleByShortLink(@Param("param") ShortLinkStatisticReqDTO requestParam);
+
+    /**
+     * 根据分组短链接获取指定日期内基础监控数据
+     */
+    @Select("SELECT " +
+            "    province, " +
+            "    SUM(cnt) AS cnt " +
+            "FROM " +
+            "    t_link_locale_statistic " +
+            "WHERE " +
+            "    gid = #{param.gid} " +
+            "    AND date BETWEEN #{param.startDate} and #{param.endDate} " +
+            "GROUP BY " +
+            "    gid, province;")
+    List<LinkLocaleStatisticDO> listLocaleByGroup(@Param("param") ShortLinkGroupStatisticReqDTO requestParam);
 }

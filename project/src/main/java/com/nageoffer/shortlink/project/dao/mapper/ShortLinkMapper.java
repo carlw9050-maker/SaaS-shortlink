@@ -2,9 +2,7 @@ package com.nageoffer.shortlink.project.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.nageoffer.shortlink.project.dao.entity.ShortLinkDO;
-import com.nageoffer.shortlink.project.dto.req.ShortLinkStatisticReqDTO;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
 /**
@@ -23,13 +21,5 @@ public interface ShortLinkMapper extends BaseMapper<ShortLinkDO> {
             @Param("totalUv") Integer totalUv,
             @Param("totalUip") Integer totalUip
     );
-
-    /**
-     * 查询total_pv, total_uv, total_uip的字段值
-     * @param requestParam
-     * @return
-     */
-    @Select("SELECT total_pv, total_uv, total_uip FROM t_link WHERE gid = #{param.gid} AND full_short_url = #{param.fullShortUrl}")
-    ShortLinkDO getSumAccess(@Param("param") ShortLinkStatisticReqDTO requestParam);
 
 }
