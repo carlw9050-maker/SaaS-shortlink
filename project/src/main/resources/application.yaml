@@ -16,13 +16,19 @@ spring:
       prefix: /templates/
       suffix: .html
 
+server:
+  port: 8001
+
 #short-link:
 #  statistic:
 #    locale:
 #      amap-key:824c511f0997586ea016f979fdb23087
 
-server:
-  port: 8001
+short-link:
+  domain:
+    default: nurl.ink:8001
+
+
 
 mybatis-plus:
   configuration:

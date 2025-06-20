@@ -41,6 +41,7 @@ import org.jsoup.nodes.Element;
 import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -79,6 +80,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 //    @Value("${short-link.statistic.locale.amap-key}")
 //    private String statisticLocaleAmapKey;
     //将配置文件application.yml中键为 short-link.statistic.locale.amap-key 的属性值注入到名为 statisticLocaleAmapKey的成员变量中。
+    @Value("${short-link.domain.default}")
+    private String createShortLinkDefaultDomain;  //在后端指定默认域名
 
     /**
      * 创建短链接
@@ -86,11 +89,11 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     @Override
     public ShortLinkCreateRespDTO creatShortLink(ShortLinkCreateReqDTO requestParam) {
         String shortLinkSuffix = generateSuffix(requestParam);
-        String fullShortUrl = StrBuilder.create(requestParam.getDomain())
+        String fullShortUrl = StrBuilder.create(createShortLinkDefaultDomain)
                 .append("/").append(shortLinkSuffix)
                 .toString();
         ShortLinkDO shortLinkDO = ShortLinkDO.builder()
-                .domain(requestParam.getDomain())
+                .domain(createShortLinkDefaultDomain)
                 .originUrl(requestParam.getOriginUrl())
                 .gid(requestParam.getGid())
                 .createdType(requestParam.getCreatedType())
@@ -175,8 +178,15 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     @SneakyThrows
     @Override
     public void restoreUrl(String shortUri, ServletRequest request, ServletResponse response){
-        String serverName = request.getServerName();
-        String fullShortUrl = serverName + "/" + shortUri;
+        String serverName = request.getServerName();  //获得域名
+        String serverPort = Optional.of(request.getServerPort())
+                //Optional是一个容器类，Optional.of(value)表示创建一个包含value（明确不为null）的实例
+                .filter(each -> !Objects.equals(each, 80))
+                //如果判断为false，this filter will cause Optional实例为空，会跳过后面的.map方法，直接执行.orElse(""),返回一个空字符串
+                .map(String::valueOf)
+                .map(each -> ":" + each)
+                .orElse("");
+        String fullShortUrl = serverName + serverPort + "/" + shortUri;
         String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY,fullShortUrl));
         //originalLink是字符串格式的key；get() 方法用于根据键从 Redis 中获取值。
         if(StrUtil.isNotBlank(originalLink)){
