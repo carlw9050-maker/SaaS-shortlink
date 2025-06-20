@@ -188,19 +188,23 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .orElse("");
         String fullShortUrl = serverName + serverPort + "/" + shortUri;
         String originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY,fullShortUrl));
-        //originalLink是字符串格式的key；get() 方法用于根据键从 Redis 中获取值。
+        //originalLink是字符串格式的key；
+        //stringRedisTemplate is an instance of StringRedisTemplate，是与redis server交互的client
+        //.opsForValue() returns a ValueOperations interface
+        //.get() was used to retrieve（获取） the value associated with a given key from Redis.
+        //String.format(...) was used for creating formatted strings,eg:String.format("user:%s:data", "123") would result in the key "user:123:data".
         if(StrUtil.isNotBlank(originalLink)){
             shortLinkStatistic(fullShortUrl,null,request,response);
             ((HttpServletResponse) response).sendRedirect(originalLink);
             return;
         }
-        //先查缓存里的键是否存在，存在则直接跳转，不存在则执行后续逻辑。
+        //先查缓存里的原始链接是否存在，存在则直接跳转，不存在则执行后续逻辑。
         boolean contains = shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl);
         if(!contains){
             ((HttpServletResponse) response).sendRedirect("/page/notfound");
             return;
         }
-        //使用布隆过滤器判断短链接是否存在，如果不存在则直接返回（防止缓存穿透）
+        //判断布隆过滤器里的短链接是否存在，如果存在，执行后续逻辑；如果不存在，则说明数据库不存在该短链接，返回”页面不存在“（防止缓存穿透）
         String gotoIsNullShortLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_IS_NULL_SHORT_LINK_KEY,fullShortUrl));
         if(StrUtil.isNotBlank(gotoIsNullShortLink)){
             ((HttpServletResponse) response).sendRedirect("/page/notfound");
@@ -471,7 +475,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         //    requestParam.getValidDateType(), ValidDateTypeEnum.PERNAMENT.getType()), // 条件
         //    ShortLinkDO::getValidDate, // 要更新的字段
         //     null // 要设置的值
-        baseMapper.update(shortLinkDO,updateWrapper);
+        baseMapper.update(shortLinkDO,updateWrapper);  //前者是各字段待更新的新值，后者是更新条件（数据库里满足条件的记录才会更新新值）
     }
 
     @SneakyThrows
