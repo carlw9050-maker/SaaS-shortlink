@@ -10,7 +10,7 @@ public enum ValidDateTypeEnum {
     /**
      * 永久有效期
      */
-    PERNAMENT(0),
+    PERMANENT(0),
 
     /**
      * 自定义有效期

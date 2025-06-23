@@ -20,7 +20,12 @@ public class ShortLinkUpdateReqDTO {
     private String originUrl;
 
     /**
-     * 短链接分组标识
+     * 原始短链接分组标识
+     */
+    private String originGid;
+
+    /**
+     * 更新后短链接分组标识
      */
     private String gid;
 

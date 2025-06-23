@@ -20,11 +20,12 @@ public class ShortLinkTableShardingTest {
             "`total_pv` int(11) DEFAULT NULL COMMENT '历史pv访问',\n" +
             "`total_uv` int(11) DEFAULT NULL COMMENT '历史uv访问',\n" +
             "`total_uip` int(11) DEFAULT NULL COMMENT '历史uip访问',\n" +
-            "`creat_time` datetime DEFAULT NULL COMMENT '短链接创建时间',\n" +
+            "`create_time` datetime DEFAULT NULL COMMENT '短链接创建时间',\n" +
             "`update_time` datetime DEFAULT NULL COMMENT '修改时间',\n" +
+            "`del_time`        bigint(20) DEFAULT '0' COMMENT '删除时间戳', \n"+
             "`del_flag` tinyint(1) DEFAULT NULL COMMENT '删除标识：0表示未删除，1表示已删除',\n" +
             "PRIMARY KEY (`id`),\n" +
-            "UNIQUE KEY `idx_unique_full_short-url` (`full_short_url`) USING BTREE\n" +
+            "UNIQUE KEY `idx_unique_full_short-url` (`full_short_url`,`del_time`) USING BTREE\n" +
             ") ENGINE=InnoDB AUTO_INCREMENT=1915762985821798402 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;";
     public static void main(String[] args) {
         for (int i = 0; i < 16; i++) {
