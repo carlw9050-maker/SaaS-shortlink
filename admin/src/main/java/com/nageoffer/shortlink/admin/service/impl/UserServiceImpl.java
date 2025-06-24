@@ -126,7 +126,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 //            //防御性编程：避免因 Redis 异常（返回 null）导致误判。
 //            throw new ClientException("用户已登录");
 //        }
-        Map<Object ,Object> hasLoginMap = stringRedisTemplate.opsForHash().entries("login_" + requestParam.getUsername());
+        Map<Object ,Object> hasLoginMap = stringRedisTemplate.opsForHash().entries("login:" + requestParam.getUsername());
         //stringRedisTemplate.opsForHash()，用于获取操作 Redis 中哈希（Hash）数据结构的接口.Redis 的哈希结构非常适合存储对象，其中每个对象都有多个字段和对应的值。
         //.entries("login_" + requestParam.getUsername()): 返回一个 Map<Object, Object>，其中包含了这个哈希键下的所有子键（field）和它们对应的值（value）。
         if (CollUtil.isNotEmpty(hasLoginMap)) {
