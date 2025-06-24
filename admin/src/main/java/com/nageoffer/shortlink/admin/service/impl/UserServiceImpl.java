@@ -1,6 +1,7 @@
 package com.nageoffer.shortlink.admin.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.collection.CollUtil;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -26,6 +27,7 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -118,11 +120,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         if(userDO==null){
             throw new ClientException(UserErrorCodeEnum.USER_NULL);
         }
-        Boolean isLogin=stringRedisTemplate.hasKey("login:"+requestParam.getUsername());
-        //构建一个Redis键,比如键就是 "login:zhangsan"
-        if(isLogin != null && isLogin){
-            //防御性编程：避免因 Redis 异常（返回 null）导致误判。
-            throw new ClientException("用户已登录");
+//        Boolean isLogin=stringRedisTemplate.hasKey("login:"+requestParam.getUsername());
+//        //构建一个Redis键,比如键就是 "login:zhangsan"
+//        if(isLogin != null && isLogin){
+//            //防御性编程：避免因 Redis 异常（返回 null）导致误判。
+//            throw new ClientException("用户已登录");
+//        }
+        Map<Object ,Object> hasLoginMap = stringRedisTemplate.opsForHash().entries("login_" + requestParam.getUsername());
+        //stringRedisTemplate.opsForHash()，用于获取操作 Redis 中哈希（Hash）数据结构的接口.Redis 的哈希结构非常适合存储对象，其中每个对象都有多个字段和对应的值。
+        //.entries("login_" + requestParam.getUsername()): 返回一个 Map<Object, Object>，其中包含了这个哈希键下的所有子键（field）和它们对应的值（value）。
+        if (CollUtil.isNotEmpty(hasLoginMap)) {
+            //CollUtil.isNotEmpty(hasLoginMap): Hutool提供的一个工具方法，用于判断集合或 Map 是否不为空
+            String token = hasLoginMap.keySet().stream()
+                    //hasLoginMap.keySet().stream(): 获取 hasLoginMap 的所有键（fields），并将其转换为一个流（Stream）
+                    .findFirst()
+                    //尝试从流中获取第一个元素
+                    .map(Object::toString)
+                    //如果找到了第一个元素（即 Object 类型），将其转换为 String 类型
+                    .orElseThrow(() -> new ClientException("用户登录错误"));
+                    //如果 findFirst() 没有找到任何元素，则
+            return new UserLoginRespDTO(token);
         }
 
         /**
