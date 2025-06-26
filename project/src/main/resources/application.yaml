@@ -10,6 +10,14 @@ spring:
     redis:
       host: 127.0.0.1
       port: 6379
+      channel-topic:
+        #自定义 Redis Stream 的配置
+        short-link-statistic: 'short_link:statistic-stream'
+        #Stream 类型的 key，作为生产者写入和消费者读取的消息通道。这个 Key 对应的 Value 类型是 Stream 类型的有序消息队列数据结构。
+        #Redis 是一个 Key-Value 数据库，每个 Key 对应一个数据结构（String、List、Set、Hash、ZSet、Stream 等）；
+        short-link-statistic-group: 'short_link:statistic-stream:only-group'
+        #消费者组的名字，用于 Redis Stream 的消费组模型。
+
   mvc:
   #短链接跳转失败时的前端页面响应
     view:
