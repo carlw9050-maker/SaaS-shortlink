@@ -88,3 +88,7 @@ public class DelayShortLinkStatisticConsumer implements InitializingBean {
         onMessage();
     }
 }
+    //The InitializingBean Interface：
+    //When you implement InitializingBean in a Spring-managed component (like DelayShortLinkStatisticConsumer which is annotated with @Component),
+    // you're telling Spring, "Hey, after you've finished creating this object and injecting all its dependencies
+    // (redissonClient, shortLinkService, messageQueueIdempotentHandler), please call my afterPropertiesSet() method."
