@@ -91,6 +91,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     /**
      * 创建短链接
      */
+    @Transactional(rollbackFor = Exception.class)   //如果数据库插入数据时报错，那么将数据库回滚到插入前的状态
     @Override
     public ShortLinkCreateRespDTO creatShortLink(ShortLinkCreateReqDTO requestParam) {
         verificationWhitelist(requestParam.getOriginUrl());
@@ -124,13 +125,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             baseMapper.insert(shortLinkDO);
             shortLinkGoToMapper.insert(linkGoToDO);
         } catch (DuplicateKeyException ex) {
-            LambdaQueryWrapper<ShortLinkDO> queryWrapper = Wrappers.lambdaQuery(ShortLinkDO.class)
-                    .eq(ShortLinkDO::getFullShortUrl, fullShortUrl);
-            ShortLinkDO hasShortLink = baseMapper.selectOne(queryWrapper);
-            if (hasShortLink != null) {
-                log.warn("短链接：{} 重复入库", fullShortUrl);
-                throw new ServiceException("短链接生成重复");
-            }
+            throw new ServiceException(String.format("短链接：%s 生成重复", fullShortUrl));
         }
         stringRedisTemplate.opsForValue().set(
                 String.format(GOTO_SHORT_LINK_KEY, fullShortUrl),
@@ -401,7 +396,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 throw new ServiceException("短链接频繁生成，请稍后再试");
             }
             String orginUrl = requestParam.getOriginUrl();
-            orginUrl += System.currentTimeMillis();
+            //orginUrl += System.currentTimeMillis();  //这种方式有一定弊端：毫秒级高并发请求，恶意用户同一毫秒创建大量短链接，就可能导致生成短链接重复
+            orginUrl += UUID.randomUUID().toString();
             shortUri = HashUtil.hashToBase62(orginUrl);
             if (!shortUriCreateCachePenetrationBloomFilter.contains(createShortLinkDefaultDomain + "/" + shortUri)) {
                 break;
