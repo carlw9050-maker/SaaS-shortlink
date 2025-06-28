@@ -24,7 +24,6 @@ import com.nageoffer.shortlink.project.dto.req.ShortLinkCreateReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkPageReqDTO;
 import com.nageoffer.shortlink.project.dto.req.ShortLinkUpdateReqDTO;
 import com.nageoffer.shortlink.project.dto.resp.*;
-import com.nageoffer.shortlink.project.mq.producer.DelayShortLinkStatisticProducer;
 import com.nageoffer.shortlink.project.mq.producer.ShortLinkStatisticSaveProducer;
 import com.nageoffer.shortlink.project.service.ShortLinkService;
 import com.nageoffer.shortlink.project.toolkit.HashUtil;
@@ -79,7 +78,6 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     private final LinkAccessLogsMapper linkAccessLogsMapper;
     private final LinkDeviceStatisticMapper linkDeviceStatisticMapper;
     private final LinkNetworkStatisticMapper linkNetworkStatisticMapper;
-    private final DelayShortLinkStatisticProducer delayShortLinkStatisticProducer;
     private final GotoDomainWhiteListConfiguration gotoDomainWhiteListConfiguration;
     private final ShortLinkStatisticSaveProducer shortLinkStatisticSaveProducer;
 
