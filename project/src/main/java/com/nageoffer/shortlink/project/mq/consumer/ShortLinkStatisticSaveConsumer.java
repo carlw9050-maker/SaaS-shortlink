@@ -6,9 +6,11 @@ import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.nageoffer.shortlink.project.common.convention.exception.ServiceException;
 import com.nageoffer.shortlink.project.dao.entity.*;
 import com.nageoffer.shortlink.project.dao.mapper.*;
 import com.nageoffer.shortlink.project.dto.biz.ShortLinkStatisticRecordDTO;
+import com.nageoffer.shortlink.project.mq.idempotent.MessageQueueIdempotentHandler;
 import com.nageoffer.shortlink.project.mq.producer.DelayShortLinkStatisticProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +51,7 @@ public class ShortLinkStatisticSaveConsumer implements StreamListener<String, Ma
     private final LinkNetworkStatisticMapper linkNetworkStatisticMapper;
     private final DelayShortLinkStatisticProducer delayShortLinkStatisticProducer;
     private final StringRedisTemplate stringRedisTemplate;
+    private final MessageQueueIdempotentHandler messageQueueIdempotentHandler;
 
 //    @Valfue("${short-link.stats.locale.amap-key}")
 //    private String statsLocaleAmapKey;
@@ -58,14 +61,36 @@ public class ShortLinkStatisticSaveConsumer implements StreamListener<String, Ma
         //属于隐式（不声明接口但方法签名一致（Spring 会自动识别））地实现 StreamListener<String, MapRecord<String, String, String>> 接口，如此才可以作为消息处理器被使用
         String stream = message.getStream();
         RecordId id = message.getId();
-        Map<String, String> producerMap = message.getValue();
-        String fullShortUrl = producerMap.get("fullShortUrl");
-        if (StrUtil.isNotBlank(fullShortUrl)) {
-            String gid = producerMap.get("gid");
-            ShortLinkStatisticRecordDTO statisticRecord = JSON.parseObject(producerMap.get("statisticRecord"), ShortLinkStatisticRecordDTO.class);
-            actualSaveShortLinkStatistic(fullShortUrl, gid, statisticRecord);
+        if (!messageQueueIdempotentHandler.isMessageProcessed(id.toString())) {
+            // 判断当前的这个消息是否已被消费
+            if (messageQueueIdempotentHandler.isAccomplish(id.toString())) {
+                return;
+            }
+            throw new ServiceException("消息未完成流程，需要消息队列重试");
         }
-        stringRedisTemplate.opsForStream().delete(Objects.requireNonNull(stream), id.getValue());
+        try {
+            Map<String, String> producerMap = message.getValue();  //获取消息的实际内容
+            String fullShortUrl = producerMap.get("fullShortUrl");
+            if (StrUtil.isNotBlank(fullShortUrl)) {
+                String gid = producerMap.get("gid");
+                ShortLinkStatisticRecordDTO statisticRecord = JSON.parseObject(producerMap.get("statisticRecord"), ShortLinkStatisticRecordDTO.class);
+                actualSaveShortLinkStatistic(fullShortUrl, gid, statisticRecord);
+            }
+            stringRedisTemplate.opsForStream().delete(Objects.requireNonNull(stream), id.getValue());
+            //删除 Redis 中已经成功处理的消息。 stream 是 Redis 的一个 key，它对应的值是 Stream 类型的一整个数据结构；.requireNonNull(stream) 确保名称不为空，否则抛出错误
+            //id是 Stream 内的每条消息的唯一标识符，消息的实际内容通常包含一个或多个键值对。
+        } catch (Throwable ex) {
+            // 某某某情况宕机了
+            messageQueueIdempotentHandler.delMessageProcessed(id.toString());
+            log.error("记录短链接监控消费异常", ex);
+        }
+        messageQueueIdempotentHandler.setAccomplish(id.toString());  //删除幂等标识
+        //总结，上述代码的逻辑就是：
+        // 消息是否消费过？
+            //是 那么直接返回，不执行后面逻辑；
+            //否 → 去消费 → 删除 Stream 中已消费过的消息
+                // 如果出异常，则删除幂等标识，便于下次重新消费。幂等标识自然过期失效的时长是 2 min。
+            //标记消费完成（设置幂等标识为1）
     }
 
     public void actualSaveShortLinkStatistic(String fullShortUrl, String gid, ShortLinkStatisticRecordDTO statisticRecord) {
