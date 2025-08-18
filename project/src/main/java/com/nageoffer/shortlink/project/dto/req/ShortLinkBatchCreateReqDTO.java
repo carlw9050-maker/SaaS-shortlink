@@ -6,6 +6,9 @@ import lombok.Data;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * 短链接批量创建请求
+ */
 @Data
 public class ShortLinkBatchCreateReqDTO {
 

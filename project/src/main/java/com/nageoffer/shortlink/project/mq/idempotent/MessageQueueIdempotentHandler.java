@@ -28,7 +28,7 @@ public class MessageQueueIdempotentHandler {
         String key = IDEMPOTENT_KEY_PREFIX + messageId;
         //构建一个专门的键，来唯一标识每一条消息的处理状态
         return Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, "0", 2, TimeUnit.MINUTES));
-        //查询并存储的操作：如果键不存在，则将键存入并且将其对应的value定义为 0 ，2分钟后该键值对过期，并返回 true；如果不存在，则直接返回false；
+        //查询并存储的操作：如果键不存在，则将键存入并且将其对应的value定义为 0 ，2分钟后该键值对过期，并返回 true；如果存在，则直接返回false；
         // 设置过期是防止异常情况下，键能自动失效，防止长期占用内存，而且允许消息在过期后也能被重新处理（如果有重试机制）
     }
 

@@ -7,6 +7,9 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+/**
+ * 批量创建短链接后的返回参数
+ */
 @Data
 @Builder
 @NoArgsConstructor

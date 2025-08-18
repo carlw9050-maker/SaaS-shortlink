@@ -30,6 +30,12 @@ public class ShortLinkController {
 
     private final ShortLinkService shortLinkService;
 
+    /**
+     * 短链接重定向
+     * @param shortUri
+     * @param request
+     * @param response
+     */
     @GetMapping("/{short-uri}")
     public void restoreUrl(@PathVariable ("short-uri") String shortUri, ServletRequest request, ServletResponse response) {
         //@PathVariable ("short-uri")表示从URL路径中提取名为"short-uri"的变量值并传递给方法参数，

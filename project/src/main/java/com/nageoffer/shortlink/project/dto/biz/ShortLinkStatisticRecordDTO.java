@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 访问短链接的用户信息
+ */
 @Data
 @Builder
 @NoArgsConstructor

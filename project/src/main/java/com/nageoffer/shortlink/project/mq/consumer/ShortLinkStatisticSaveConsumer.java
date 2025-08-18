@@ -32,7 +32,6 @@ import static com.nageoffer.shortlink.project.common.constant.RedisKeyConstant.L
 
 /**
  * 短链接监控状态保存消息队列消费者
- * 公众号：马丁玩编程，回复：加群，添加马哥微信（备注：link）获取项目资料
  */
 @Slf4j
 @Component
@@ -56,9 +55,15 @@ public class ShortLinkStatisticSaveConsumer implements StreamListener<String, Ma
 //    @Valfue("${short-link.stats.locale.amap-key}")
 //    private String statsLocaleAmapKey;
 
+    /**
+     * 消费逻辑
+     * @param message 短链接访问信息统计的请求
+     */
     @Override
     public void onMessage(MapRecord<String, String, String> message) {
         //属于隐式（不声明接口但方法签名一致（Spring 会自动识别））地实现 StreamListener<String, MapRecord<String, String, String>> 接口，如此才可以作为消息处理器被使用
+        //MapRecord<String, String, String> 是 Redis Stream 消息的封装对象，从左到右分别是消息所属的 Stream 名称（即topic）
+        //消息的唯一 ID（如1690000000000-0，由 Redis 自动生成，以及 消息的实际内容（即生产者发送的producerMap，键值对结构）
         String stream = message.getStream();
         RecordId id = message.getId();
         if (!messageQueueIdempotentHandler.isMessageProcessed(id.toString())) {
@@ -93,6 +98,12 @@ public class ShortLinkStatisticSaveConsumer implements StreamListener<String, Ma
             //标记消费完成（设置幂等标识为1）
     }
 
+    /**
+     * 短链接的访问信息的统计逻辑
+     * @param fullShortUrl
+     * @param gid
+     * @param statisticRecord
+     */
     public void actualSaveShortLinkStatistic(String fullShortUrl, String gid, ShortLinkStatisticRecordDTO statisticRecord) {
         fullShortUrl = Optional.ofNullable(fullShortUrl).orElse(statisticRecord.getFullShortUrl());
         RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(String.format(LOCK_GID_UPDATE_KEY, fullShortUrl));

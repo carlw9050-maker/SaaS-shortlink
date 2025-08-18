@@ -6,6 +6,9 @@ import lombok.Data;
 
 import java.util.Date;
 
+/**
+ * 短链接创建请求
+ */
 @Data
 public class ShortLinkCreateReqDTO {
 

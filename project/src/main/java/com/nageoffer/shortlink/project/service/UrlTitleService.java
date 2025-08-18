@@ -1,5 +1,8 @@
 package com.nageoffer.shortlink.project.service;
 
+/**
+ * 短链接标题服务层
+ */
 public interface UrlTitleService {
     /**
      * 根据URL获取标题

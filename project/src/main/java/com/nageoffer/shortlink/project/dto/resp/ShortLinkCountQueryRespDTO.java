@@ -3,7 +3,7 @@ package com.nageoffer.shortlink.project.dto.resp;
 import lombok.Data;
 
 /**
- * 短链接分组数量的查询请求
+ * 短链接分组数量的查询请求的响应
  */
 @Data
 public class ShortLinkCountQueryRespDTO {

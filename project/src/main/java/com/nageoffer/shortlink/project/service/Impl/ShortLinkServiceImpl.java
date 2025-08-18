@@ -89,7 +89,9 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     private String createShortLinkDefaultDomain;  //在后端指定默认域名
 
     /**
-     * 创建短链接
+     * 创建单个短链接
+     * @param requestParam http 请求
+     * @return ShortLinkCreateRespDTO
      */
     @Transactional(rollbackFor = Exception.class)   //如果数据库插入数据时报错，那么将数据库回滚到插入前的状态
     @Override
@@ -141,6 +143,11 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 .build();
     }
 
+    /**
+     * 创建批量短链接
+     * @param requestParam http 请求
+     * @return ShortLinkBatchCreateRespDTO
+     */
     @Override
     public ShortLinkBatchCreateRespDTO batchCreateShortLink(ShortLinkBatchCreateReqDTO requestParam) {
         List<String> originUrls = requestParam.getOriginUrls();
@@ -171,6 +178,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     /**
      * 分页查询短链接
+     *  @param requestParam http 请求
+     *  @return IPage<ShortLinkPageResDTO> 分页查询结果
      */
     @Override
     public IPage<ShortLinkPageResDTO> pageShortLink(ShortLinkPageReqDTO requestParam) {
@@ -194,6 +203,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
 
     /**
      * 查询每个分组中短链接数量
+     * @param requestParam http 请求
+     * @return List<ShortLinkCountQueryRespDTO>
      */
     @Override
     public List<ShortLinkCountQueryRespDTO> listGroupShortLinkCount(List<String> requestParam) {
@@ -208,6 +219,12 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         return BeanUtil.copyToList(shortLinkDOList, ShortLinkCountQueryRespDTO.class);
     }
 
+    /**
+     * 短链接重定向到原始链接
+     * @param shortUri
+     * @param request 类型是 ServletRequest
+     * @param response 类型是 ServletResponse
+     */
     @SneakyThrows
     @Override
     public void restoreUrl(String shortUri, ServletRequest request, ServletResponse response) {
@@ -308,6 +325,13 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     //代码能"先取后存"：这是典型的 缓存穿透防护设计，先尝试从 Redis 读取，如果缓存命中（短链接已存在），直接返回；如果未命中（返回 null），继续后续逻辑；
     //从数据库读取并回填缓存：查询数据库获取原始链接，将结果存入 Redis（供后续请求快速访问），这种设计避免了缓存穿透（大量请求直接打到数据库）
 
+    /**
+     * 汇总访问短链接的用户信息
+     * @param fullShortUrl
+     * @param request 类型是 ServletRequest
+     * @param response 类型是 ServletResponse
+     * @return ShortLinkStatisticRecordDTO 获取用户访问信息并将其放在该返回对象
+     */
     private ShortLinkStatisticRecordDTO buildLinkStatisticRecordAndSetUser(String fullShortUrl, ServletRequest request, ServletResponse response) {
         AtomicBoolean uvFirstFlag = new AtomicBoolean();    //默认初始值是false
         Cookie[] cookies = ((HttpServletRequest) request).getCookies();
@@ -376,6 +400,12 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     }
     //上述代码对原来的shortLinkStatistic()做了一层抽象，把从req请求体里提取的信息汇总在了一起，另外还有user、uip信息的获取
 
+    /**
+     * 统计短链接访问信息
+     * @param fullShortUrl
+     * @param gid
+     * @param statisticRecord 类型是 ShortLinkStatisticRecordDTO
+     */
     @Override
     public void shortLinkStatistic(String fullShortUrl, String gid, ShortLinkStatisticRecordDTO statisticRecord) {
         Map<String, String> producerMap = new HashMap<>();
@@ -384,10 +414,15 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         producerMap.put("statisticRecord", JSON.toJSONString(statisticRecord));
         shortLinkStatisticSaveProducer.send(producerMap);
         //接下来会调用：stringRedisTemplate.opsForStream().add(topic, producerMap);
-        //作用是将消息写入 Redis Stream类型的有序消息队列数据结构：
+        //作用是将消息写入 Redis Stream类型的即时消息队列数据结构：
     }
 
 
+    /**
+     * 创建短链接字符串
+     * @param requestParam 创建短链接请求
+     * @return 返回不超过 6 位的字符串
+     */
     private String generateSuffix(ShortLinkCreateReqDTO requestParam) {
         int customGenerateCount = 0;
         String shortUri;
@@ -408,7 +443,8 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
     }
 
     /**
-     * 新增短链接
+     * 更新短链接
+     * @param requestParam 更新请求
      */
     @Transactional(rollbackFor = Exception.class)
     //方法在抛出任何异常时回滚，保证“删除+插入”操作的原子性。
@@ -569,15 +605,23 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
         }
         if (!Objects.equals(hasShortLinkDO.getValidDateType(), requestParam.getValidDateType())
                 || !Objects.equals(hasShortLinkDO.getValidDate(), requestParam.getValidDate())) {
+            //当用户修改了短链接的有效期（例如从 “永久有效” 改为 “30 天后过期”，或调整了具体过期时间），则进入该条件块执行缓存更新逻辑
             stringRedisTemplate.delete(String.format(GOTO_SHORT_LINK_KEY, requestParam.getFullShortUrl()));
             if (hasShortLinkDO.getValidDate() != null && hasShortLinkDO.getValidDate().before(new Date())) {
+                //如果旧短链接已过期，而新请求可能将其改为 “有效状态”（如延长有效期），此时需要进一步处理 “空值缓存”
                 if (Objects.equals(requestParam.getValidDateType(), ValidDateTypeEnum.PERMANENT.getType()) || requestParam.getValidDate().after(new Date())) {
                     stringRedisTemplate.delete(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, requestParam.getFullShortUrl()));
                 }
             }
         }
+        //保证缓存一致性：删除失效缓存
     }
 
+    /**
+     * 获取网站图标的绝对路径
+     * @param url 网站地址
+     * @return 图标地址
+     */
     @SneakyThrows
     private String getFavicon(String url) {
 

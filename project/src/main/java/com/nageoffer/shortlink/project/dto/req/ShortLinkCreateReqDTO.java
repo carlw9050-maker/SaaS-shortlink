@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 
 import java.util.Date;
 
+/**
+ * 短链接创捷请求
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

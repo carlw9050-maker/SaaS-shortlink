@@ -3,6 +3,9 @@ package com.nageoffer.shortlink.project.common.enums;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 短链接有效期类型
+ */
 @RequiredArgsConstructor
 //lombok的注解，作用是为类的所有带有final的字段生成构造函数
 public enum ValidDateTypeEnum {

@@ -24,6 +24,7 @@ public class HashUtil {
             num /= SIZE;
         }
         return sb.reverse().toString();
+        //为什么要翻转，为了符合人类阅读数字时从高位到低位（如百十个）的阅读顺序
     }
     /*
     创建 StringBuilder 对象用于构建结果；使用循环，当数字大于 0 时，计算数字对 62 取模的结果，得到索引，根据索引从字符数组中获取对应字符并追加，

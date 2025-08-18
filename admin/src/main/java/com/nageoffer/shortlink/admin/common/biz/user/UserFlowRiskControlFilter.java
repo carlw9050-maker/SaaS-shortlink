@@ -37,6 +37,14 @@ public class UserFlowRiskControlFilter implements Filter {
 
     private static final String USER_FLOW_RISK_CONTROL_LUA_SCRIPT_PATH = "lua/user_flow_risk_control.lua";
 
+    /**
+     *控制访问流量，在请求到达业务逻辑前将其拦截
+     * @param request
+     * @param response
+     * @param filterChain
+     * @throws IOException
+     * @throws ServletException
+     */
     @SneakyThrows
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain) throws IOException, ServletException {
@@ -67,6 +75,12 @@ public class UserFlowRiskControlFilter implements Filter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * 向 http 响应中写入 json 格式的数据
+     * @param response
+     * @param json
+     * @throws Exception
+     */
     private void returnJson(HttpServletResponse response, String json) throws Exception {
         response.setCharacterEncoding("UTF-8");
         //设置字符编码为UTF-8，避免中文乱码

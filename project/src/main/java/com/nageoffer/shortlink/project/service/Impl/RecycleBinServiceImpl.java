@@ -30,6 +30,10 @@ public class RecycleBinServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLin
 
     private final StringRedisTemplate stringRedisTemplate;
 
+    /**
+     * 添加短链接至回收站
+     * @param requestParam 请求参数
+     */
     @Override
     public void addRecycleBin(RecycleBinAddReqDTO requestParam){
         LambdaUpdateWrapper<ShortLinkDO> updateWrapper = Wrappers.lambdaUpdate(ShortLinkDO.class)

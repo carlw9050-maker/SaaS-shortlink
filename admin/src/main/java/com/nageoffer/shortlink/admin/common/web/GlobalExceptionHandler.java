@@ -65,6 +65,11 @@ public class GlobalExceptionHandler {
         return Results.failure();
     }
 
+    /**
+     * 获取当前 http 请求的完整 URL（即资源地址，包含请求路径和查询参数）
+     * @param request
+     * @return
+     */
     private String getUrl(HttpServletRequest request) {
         if (StringUtils.isEmpty(request.getQueryString())) {
             return request.getRequestURL().toString();

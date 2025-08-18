@@ -5,6 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * 短链接创建请求的响应
+ */
 @Data
 @Builder
 @NoArgsConstructor

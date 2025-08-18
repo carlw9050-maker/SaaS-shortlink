@@ -2,6 +2,9 @@ package com.nageoffer.shortlink.admin.dto.resp;
 
 import lombok.Data;
 
+/**
+ * 用户真实信息
+ */
 @Data
 public class UserActualRespDTO {
         /**
