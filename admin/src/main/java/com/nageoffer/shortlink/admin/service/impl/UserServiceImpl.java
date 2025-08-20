@@ -131,6 +131,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         //.entries("login_" + requestParam.getUsername()): 返回一个 Map<Object, Object>，其中包含了这个哈希键下的所有子键（field）和它们对应的值（value）。
         if (CollUtil.isNotEmpty(hasLoginMap)) {
             //CollUtil.isNotEmpty(hasLoginMap): Hutool提供的一个工具方法，用于判断集合或 Map 是否不为空
+            stringRedisTemplate.expire("login:"+requestParam.getUsername(),30L, TimeUnit.DAYS);
+            //重新刷新有效期，防止“登陆状态下，redis 记录突然失效，导致后续接口调用请求被网关拦截”
             String token = hasLoginMap.keySet().stream()
                     //hasLoginMap.keySet().stream(): 获取 hasLoginMap 的所有键（fields），并将其转换为一个流（Stream）
                     .findFirst()
