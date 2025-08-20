@@ -1,8 +1,9 @@
 package com.nageoffer.shortlink.admin.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.nageoffer.shortlink.admin.common.convention.result.Result;
 import com.nageoffer.shortlink.admin.common.convention.result.Results;
+import com.nageoffer.shortlink.admin.remote.dto.ShortLinkActualRemoteService;
 import com.nageoffer.shortlink.admin.remote.dto.ShortLinkRemoteService;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkBatchCreateReqDTO;
 import com.nageoffer.shortlink.admin.remote.dto.req.ShortLinkCreateReqDTO;
@@ -14,6 +15,7 @@ import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkCreateRespDTO;
 import com.nageoffer.shortlink.admin.remote.dto.resp.ShortLinkPageResDTO;
 import com.nageoffer.shortlink.admin.toolkit.EasyExcelWebUtil;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,11 +25,13 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 public class ShortLinkController {
 
     /**
      * TODO后续重构为SpringCloud Feign调用
      */
+    private final ShortLinkActualRemoteService shortLinkActualRemoteService;
 
     ShortLinkRemoteService shortLinkRemoteService = new ShortLinkRemoteService() {};
 //    语法 new InterfaceName() {} 或 new ClassName() {}表示创建一个接口的匿名实现类的实例，shortLinkRemoteService 是一个对象
@@ -39,7 +43,7 @@ public class ShortLinkController {
      */
     @PostMapping("/api/shortlink/admin/v1/create-shortlink")
     public Result<ShortLinkCreateRespDTO> creatShortLink(@RequestBody ShortLinkCreateReqDTO requestParam){
-        return shortLinkRemoteService.creatShortLink(requestParam);
+        return shortLinkActualRemoteService.creatShortLink(requestParam);
     }
 //    前端发送的数据是JSON字符串，@RequestBody注解会让spring自动将字符串转换为java对象
 
@@ -49,7 +53,7 @@ public class ShortLinkController {
     @SneakyThrows
     @PostMapping("/api/shortlink/admin/v1/create-shortlink/batch")
     public void batchCreateShortLink(@RequestBody ShortLinkBatchCreateReqDTO requestParam, HttpServletResponse response) {
-        Result<ShortLinkBatchCreateRespDTO> shortLinkBatchCreateRespDTOResult = shortLinkRemoteService.batchCreateShortLink(requestParam);
+        Result<ShortLinkBatchCreateRespDTO> shortLinkBatchCreateRespDTOResult = shortLinkActualRemoteService.batchCreateShortLink(requestParam);
         if (shortLinkBatchCreateRespDTOResult.isSuccess()) {
             List<ShortLinkBaseInfoRespDTO> baseLinkInfos = shortLinkBatchCreateRespDTOResult.getData().getBaseLinkInfos();
             EasyExcelWebUtil.write(response, "批量创建短链接-SaaS短链接系统", ShortLinkBaseInfoRespDTO.class, baseLinkInfos);
@@ -60,9 +64,9 @@ public class ShortLinkController {
      * 分页查询短链接
      */
     @GetMapping("/api/shortlink/admin/v1/get-page")
-    public Result<IPage<ShortLinkPageResDTO>> pageShortLink(ShortLinkPageReqDTO requestParam){
+    public Result<Page<ShortLinkPageResDTO>> pageShortLink(ShortLinkPageReqDTO requestParam){
         //IPage<> 是 MyBatis-Plus 框架中定义的一个分页结果接口，用于封装分页查询的结果数据
-        return shortLinkRemoteService.pageShortLink(requestParam);
+        return shortLinkActualRemoteService.pageShortLink(requestParam.getGid(), requestParam.getOrderTag(), requestParam.getCurrent(), requestParam.getSize());
     }
 
     /**
