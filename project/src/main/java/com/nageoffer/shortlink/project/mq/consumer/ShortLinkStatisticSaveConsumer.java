@@ -100,6 +100,8 @@ public class ShortLinkStatisticSaveConsumer implements StreamListener<String, Ma
 
     /**
      * 短链接的访问信息的统计逻辑
+     * 无须加入事务注解，因为 MySQL 在 InoDB 存储引擎下，将单个 INSERT/UPDATE/DELETE 视为一个独立的事务提交，那么由于事务饿 ACID 特性，在这里多个线程同时
+     * 获取读锁，同时执行 INSERT 语句也不会出现数据不一致的问题；
      * @param fullShortUrl
      * @param gid
      * @param statisticRecord

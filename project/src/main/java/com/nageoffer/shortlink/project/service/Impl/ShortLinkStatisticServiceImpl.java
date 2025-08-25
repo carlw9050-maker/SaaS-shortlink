@@ -37,6 +37,11 @@ public class ShortLinkStatisticServiceImpl implements ShortLinkStatisticService 
     private final LinkNetworkStatisticMapper linkNetworkStatisticMapper;
     private final ShortLinkMapper shortLinkMapper;
 
+    /**
+     * 统计某个短链接：浏览器访问类型及占比、小时访问总次数、高频访问IP列表等等
+     * @param requestParam 短链接监控数据的查询条件
+     * @return 单个短链接汇总后的访问信息
+     */
     @Override
     public ShortLinkStatisticRespDTO oneShortLinkStatistic(ShortLinkStatisticReqDTO requestParam) {
         // 基础访问详情
@@ -382,6 +387,11 @@ public class ShortLinkStatisticServiceImpl implements ShortLinkStatisticService 
                 .build();
     }
 
+    /**
+     * 统计单个短链接的每次访问信息的列表
+     * @param requestParam 短链接监控数据的查询条件
+     * @return 单个链接每次访问的详细信息（非汇总信息）的列表
+     */
     @Override
     public IPage<ShortLinkStatisticAccessRecordRespDTO> shortLinkStatisticAccessRecord(ShortLinkStatisticAccessRecordReqDTO requestParam) {
         LambdaQueryWrapper<LinkAccessLogsDO> queryWrapper = Wrappers.lambdaQuery(LinkAccessLogsDO.class)
