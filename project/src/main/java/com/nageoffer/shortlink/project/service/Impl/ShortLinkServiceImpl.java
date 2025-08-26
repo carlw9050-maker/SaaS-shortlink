@@ -620,7 +620,7 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
                 }
             }
         }
-        //保证缓存一致性：删除失效缓存
+        //保证缓存、数据库的数据一致性：删除失效缓存
     }
 
     /**

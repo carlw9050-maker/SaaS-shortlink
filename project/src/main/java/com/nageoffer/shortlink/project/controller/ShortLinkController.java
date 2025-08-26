@@ -52,7 +52,7 @@ public class ShortLinkController {
      */
     @PostMapping("/api/shortlink/v1/create-shortlink")
     @SentinelResource(
-            value = "creat_short-link",
+            value = "create_shortlink",
             blockHandler = "createShortLinkBlockHandlerMethod",
             blockHandlerClass = CustomBlockHandler.class
     )
