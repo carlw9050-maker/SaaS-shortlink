@@ -127,6 +127,11 @@ public class ShortLinkServiceImpl extends ServiceImpl<ShortLinkMapper, ShortLink
             baseMapper.insert(shortLinkDO);
             shortLinkGoToMapper.insert(linkGoToDO);
         } catch (DuplicateKeyException ex) {
+            if (!shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl)) {
+                shortUriCreateCachePenetrationBloomFilter.add(fullShortUrl);
+            }
+            //redis 异常关闭且持久化策略失效，丢失了写入最近一次短链接的命令。会出现同一短链接绕过布隆过滤器重复插入数据库的问题，
+                //虽然数据库的唯一索引会禁止重复插入，但是会抛出异常，而且为了避免重复抛出异常，在捕获异常时进行针对性的处理。
             throw new ServiceException(String.format("短链接：%s 生成重复", fullShortUrl));
         }
         stringRedisTemplate.opsForValue().set(
