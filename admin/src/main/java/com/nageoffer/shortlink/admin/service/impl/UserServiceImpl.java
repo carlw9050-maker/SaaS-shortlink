@@ -80,6 +80,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
                 // 它会立即返回一个布尔值：如果锁可用（没有被其他线程/服务持有），则获取锁并返回 true；如果锁不可用，则立即返回 false，不会等待
                 //lock() 方法是阻塞行为：当调用 lock() 时：如果锁可用，则获取锁并继续执行；如果锁不可用，则当前线程会阻塞，直到锁被释放，没有返回值，
                 // 因为它会一直等待直到获取锁，对于同一个用户名的并发请求，第一个请求获取锁，其他请求会排队等待，直到锁释放，这会阻塞其他请求，直到它们能获取锁
+                //该锁避免了 大量注册同一新用户名的恶意请求极端时间打到数据库，给数据库造成压力的情形
                 try{
                     int inserted=baseMapper.insert(BeanUtil.toBean(requestParam,UserDO.class));
                     //将 UserRegisterReqDTO 对象转换为 UserDO 对象

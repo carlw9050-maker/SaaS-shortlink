@@ -31,3 +31,4 @@ spring:
             - Path=/api/shortlink/**
           filters:
             - name: TokenValidate
+              # Spring Cloud Gateway 通过类名约定（去掉 GatewayFilterFactory 后缀）来生成一个 GatewayFilter 实例，即TokenValidate

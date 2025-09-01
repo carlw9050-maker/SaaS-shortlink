@@ -22,7 +22,7 @@ import java.util.Optional;
 import static com.nageoffer.shortlink.admin.common.convention.errorcode.BaseErrorCode.FLOW_LIMIT_ERROR;
 
 /**
- * 用户操作流量风控过滤器
+ * 用户操作流量风控过滤器,是项目自定义过滤器，与 Tomcat 容器无关
  * 用户流量风险控制功能的逻辑核心
  */
 @Slf4j
