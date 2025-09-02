@@ -1,0 +1,242 @@
+引入依赖
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-security</artifactId>
+</dependency>
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-oauth2-client</artifactId>
+</dependency>
+
+定义.yaml 配置文件
+server:
+  forward-headers-strategy: native   # 反向代理/网关后保留原始 Host/Proto（可选）
+作用：当项目部署在反向代理服务器（如 Nginx）或网关（如 Spring Cloud Gateway）之后时，用于保留客户端的原始请求信息（如真实 IP、协议 http/https、主机名 Host 等）。
+场景：第三方登录涉及回调地址（redirect-uri），如果项目在代理后运行，不配置此参数可能导致回调地址中的域名 / 协议被代理服务器修改，
+引发第三方平台的 “回调地址不匹配” 错误。
+spring:
+  security:
+    oauth2:
+      client:   spring.security.oauth2.client 是 Spring Security OAuth2 客户端的核心配置节点
+        registration:    用于配置 “第三方登录服务的注册信息”
+          github:是自定义的注册标识
+            client-id: YOUR_GITHUB_CLIENT_ID    第三方平台（GitHub）分配给你的应用唯一标识，在 GitHub 开发者中心注册应用后，会生成此 ID
+            client-secret: YOUR_GITHUB_CLIENT_SECRET    第三方平台（GitHub）分配的应用密钥，相当于 “密码”，用于验证应用合法性（需替换为实际值）
+            scope: read:user, user:email    声明应用需要获取的用户权限范围（GitHub 平台定义的权限）
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"    第三方平台（GitHub）在用户授权成功后，将用户重定向回你的应用的地址（回调地址）
+            client-name: GitHub 给当前第三方登录配置起一个易读的名称（如 “GitHub 登录”），主要用于日志或前端展示
+        provider:
+          github:   spring: security: oauth2: client: provider: github，配置第三方平台（GitHub）的 OAuth2 接口地址（不同平台的接口地址不同，需手动指定）
+            authorization-uri: https://github.com/login/oauth/authorize 用户会被重定向到这个页面进行登录和授权
+            token-uri: https://github.com/login/oauth/access_token  GitHub 的 “令牌接口地址”，用于用 “授权码” 交换 “访问令牌（Access Token）
+            user-info-uri: https://api.github.com/user  用于用 “访问令牌” 获取用户的详细信息
+            user-name-attribute: id  # GitHub 的唯一标识字段
+short-link:
+  oauth:
+    frontend-redirect: https://your-frontend.com/login/callback   # 成功后我方的前端页
+    作用：自定义配置项（非 Spring 原生），用于指定 “第三方登录成功后，后端将用户重定向到的前端页面地址”。
+综上，这段配置的核心是 “告诉 Spring Security 如何与 GitHub 的 OAuth2 接口交互”；
+配置完成后，Spring Security 会自动处理 OAuth2 登录流程（跳转授权页、获取令牌、解析用户信息等），开发者无需手动编写这些重复逻辑。
+
+新建一个关联用户表，该表里存储本地账号与第三方账号的关联。表中存储本地用户表里的主键（比如自增主键）。另外存储第三方平台返回的用户唯一标识，
+而且存储一个第三方平台标识字段。有了该表之后，具体的登录逻辑是这样的：后端拿到第三方平台返回的用户唯一标识，从该表检查是否存在该用户，如果有的话则登录成功。
+如果没有记录，则系统自动创建一个新用户，并将其写入用户表中，另外同时更新关联表的信息。
+如果用户已有本地账号（比如通过手机号注册），可以引导用户绑定账号，将本地账号与第三方平台的标识相互关联。
+这样，后续无论使用手机号，还是第三方平台登录，都指向同一个用户。
+
+下面这段代码是一个 Spring Security 的配置类，用于配置应用程序的安全规则，特别是集成了 OAuth2 登录功能。
+OAuth2 是授权标准 / 协议，定义了一套规范的授权流程和交互规则。开发框架（如 Spring Security）是 ** OAuth2 标准的实现者 **，提供了工具简化开发
+package com.nageoffer.shortlink.admin.config;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+
+@Configuration
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final ClientRegistrationRepository clientRegistrationRepository;
+    private final OAuth2AuthorizedClientService authorizedClientService;
+    --注入 OAuth2AuthorizedClientService，用于管理已授权的 OAuth2 客户端信息。本系统就是客户端，谁发起认证请求谁是客户端，第三方平台负责实现服务端；
+    private final AuthenticationSuccessHandler oauth2SuccessHandler;
+    --注入自定义的认证成功处理器，用于处理 OAuth2 登录成功后的逻辑（如生成令牌、跳转页面等）。
+    private final AuthenticationFailureHandler oauth2FailureHandler;
+    --注入自定义的认证失败处理器，用于处理 OAuth2 登录失败后的逻辑（如记录日志、返回错误信息等）
+
+    @Bean
+    SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+          .csrf(csrf -> csrf.disable())
+          .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+          .authorizeHttpRequests(auth -> auth
+              // 网关白名单之外，后端也放行 OAuth2 的两个端点
+              .requestMatchers(
+                  "/oauth2/authorization/**",
+                  "/login/oauth2/code/**",
+                  "/api/shortlink/admin/v1/user-login",       // 你已有
+                  "/api/shortlink/admin/v1/user/has-username" // 你已有
+              ).permitAll()
+              .anyRequest().authenticated()
+          )
+          .oauth2Login(oauth -> oauth
+              .userInfoEndpoint(u -> u.userService(githubOAuth2UserService))
+              .successHandler(oauth2SuccessHandler)
+              .failureHandler(oauth2FailureHandler)
+          )
+          // 如果你已有自定义 Token 过滤器（从 header 提取你们 Redis Token），需要在此处 addFilterBefore(...)
+        ;
+        return http.build();
+    }
+}
+
+这个类的主要功能是在用户通过 GitHub 登录后，将 GitHub 账号与本地系统用户进行关联。如果是首次登录，会自动创建本地用户并建立绑定关系；
+如果已绑定，则直接关联到已有用户。处理完成后，它会返回包含 GitHub 信息和本地用户信息的增强对象，供后续的认证成功处理器使用。
+package com.nageoffer.shortlink.admin.security;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.nageoffer.shortlink.admin.dao.entity.UserThirdAccountDO;
+import com.nageoffer.shortlink.admin.dao.mapper.UserThirdAccountMapper;
+import com.nageoffer.shortlink.admin.service.UserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.oauth2.client.userinfo.*;
+import org.springframework.security.oauth2.core.user.*;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+
+@Component
+@RequiredArgsConstructor
+public class GithubOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
+
+    private final DefaultOAuth2UserService delegate = new DefaultOAuth2UserService();
+    private final UserThirdAccountMapper thirdMapper;
+    private final UserService userService;
+
+    @Override
+    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
+        OAuth2User oAuth2User = delegate.loadUser(userRequest);
+        Map<String, Object> attrs = oAuth2User.getAttributes();
+
+        // GitHub 字段
+        String githubId = String.valueOf(attrs.get("id"));
+        String login    = (String) attrs.get("login");
+        String avatar   = (String) attrs.get("avatar_url");
+
+        // 查绑定
+        UserThirdAccountDO bind = thirdMapper.selectOne(
+            Wrappers.<UserThirdAccountDO>lambdaQuery()
+                .eq(UserThirdAccountDO::getProvider, "GITHUB")
+                .eq(UserThirdAccountDO::getOpenId, githubId)
+                .eq(UserThirdAccountDO::getDelFlag, 0)
+        );
+
+        Long userId;
+        String username;
+        if (bind != null) {
+            userId = bind.getUserId();
+            username = String.valueOf(userId); // 或查本地用户名
+        } else {
+            // 首次：在本地创建用户并绑定
+            var created = userService.createUserByGithub("github_" + login, avatar); // 你在上条已新增
+            userId = created;
+            username = "github_" + login;
+
+            UserThirdAccountDO newBind = new UserThirdAccountDO();
+            newBind.setUserId(userId);
+            newBind.setProvider("GITHUB");
+            newBind.setOpenId(githubId);
+            newBind.setLoginName(login);
+            newBind.setAvatarUrl(avatar);
+            thirdMapper.insert(newBind);
+        }
+
+        // 把本地 userId/username 注入到 OAuth2User 的 attributes，供 successHandler 使用
+        var enriched = new DefaultOAuth2User(
+            oAuth2User.getAuthorities(),
+            Map.of(
+                "githubId", githubId,
+                "login", login,
+                "avatarUrl", avatar,
+                "localUserId", userId,
+                "localUsername", username
+            ),
+            "login" // nameAttributeKey
+        );
+        return enriched;
+    }
+}
+
+这个类的主要功能是处理 OAuth2 认证的结果：
+认证成功时：生成自定义令牌，将令牌与用户信息存储到 Redis，然后重定向到前端页面并带上令牌参数
+认证失败时：返回 401 错误响应，包含失败原因
+这样就完成了从第三方登录到系统内部认证的转换，使用自定义令牌来维护用户的登录状态，与系统本地登录机制保持一致。
+package com.nageoffer.shortlink.admin.security;
+import com.alibaba.fastjson2.JSON;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.stereotype.Component;
+
+import jakarta.servlet.http.*;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+
+@Component
+@RequiredArgsConstructor
+public class OAuth2Handlers implements AuthenticationSuccessHandler, AuthenticationFailureHandler {
+
+    private final StringRedisTemplate redisTemplate;
+
+    @Value("${short-link.oauth.frontend-redirect}")
+    private String frontendRedirect;
+
+    @Override
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
+                                        Authentication authentication) throws IOException {
+        OAuth2User principal = (OAuth2User) authentication.getPrincipal();
+        Long userId = ((Number) principal.getAttributes().get("localUserId")).longValue();
+        String username = (String) principal.getAttributes().get("localUsername");
+
+        // 发你们自管 Token（与本地登录一致）
+        String token = UUID.randomUUID().toString();
+        String userJson = JSON.toJSONString(Map.of("userId", userId, "username", username));
+        redisTemplate.opsForValue().set(token, userJson, 30, TimeUnit.DAYS);
+
+        String redirect = frontendRedirect + "?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8)
+                + "&username=" + URLEncoder.encode(username, StandardCharsets.UTF_8);
+        response.sendRedirect(redirect);
+    }
+
+    @Override
+    public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
+                                        org.springframework.security.core.AuthenticationException exception) throws IOException {
+        // 失败兜底：跳转到前端错误页，或返回 JSON
+        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "GitHub OAuth2 登录失败: " + exception.getMessage());
+    }
+}
+
+
+在网关的 TokenValidate.whitePathList 加上（映射到 admin）：
+/oauth2/authorization/**
+/login/oauth2/code/**
+说明：入口 /oauth2/authorization/github 与 回调 /login/oauth2/code/github 都由 Spring Security 提供，必须放行。
+
+前端改动（最简）
+“用 GitHub 登录”按钮直接跳转：GET /oauth2/authorization/github
+成功后会被后端 successHandler 重定向至 short-link.oauth.frontend-redirect，URL 携带 token 与 username，与本地登录后处理保持一致。
